@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="coman">
+  <!--
+  ROS urdf definition of the COMAN humanoid robot by Istituto Italiano di Tecnologia
+  
+  Author: Chengxu Zhou
+  
+  This file groups files to use COMAN in GAZEBO
+  
+  -->
+  <xacro:include filename="$(find coman_urdf)/urdf/coman.urdf.xacro" />
+
+  <!--xacro:include filename="$(find coman_urdf)/urdf/gazebo/microstrain_3dmgx2_imu.gazebo.xacro" /-->
+
+  <xacro:include filename="$(find coman_urdf)/urdf/gazebo/coman.gazebo.xacro" />
+
+  <xacro:include filename="$(find coman_urdf)/urdf/gazebo/coman_materials.gazebo.xacro" />
+
+<!-- Transmissions for GAZEBO SIMULATION -->
+  <xacro:include filename="$(find coman_description)/urdf/legs/legs.transmission.xacro" />
+  <xacro:include filename="$(find coman_description)/urdf/upperbody/torso.transmission.xacro" />
+  <xacro:include filename="$(find coman_description)/urdf/upperbody/arms.transmission.xacro" />
+
+  <xacro:if value="${GAZEBO_COMAN_USES_7DOF_FOREARMS_DRC_14}">
+    <xacro:include filename="$(find coman_description)/urdf/upperbody/forearms.transmission.xacro" />
+  </xacro:if>
+
+<!-- Sensors for GAZEBO SIMULATION -->
+
+  <xacro:include filename="$(find coman_description)/gazebo/coman_gazebo.urdf.xacro" />
+  <xacro:include filename="$(find coman_description)/gazebo/microstrain_3dmgx2_imu.gazebo.xacro" />
+  <xacro:include filename="$(find coman_description)/gazebo/ft_sensors.gazebo.xacro" />
+
+  <xacro:include filename="$(find coman_urdf)/urdf/gazebo/coman_materials.gazebo.xacro" />
+
+  <origin xyz="0.0 0.0 0.521" rpy="0 0 0" />
+</robot>
+

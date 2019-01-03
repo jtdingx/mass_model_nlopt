@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="coman">
+  <!--
+  ROS urdf definition of the COMAN humanoid robot by Istituto Italiano di Tecnologia
+  
+  Author: Chengxu Zhou
+  
+  This file groups files to use COMAN in GAZEBO
+  
+  -->
+  <joint name="base_joint" type="floating">
+      <parent link="base_link"/>
+      <child link="Waist"/>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+  </joint>
+
+</robot>
+
