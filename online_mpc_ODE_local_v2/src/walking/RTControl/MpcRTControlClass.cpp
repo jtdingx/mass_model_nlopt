@@ -38,13 +38,11 @@ MpcRTControlClass::MpcRTControlClass()
   mpc._robot_name = RobotPara().name;
   mpc._robot_mass = RobotPara().totalmass;
   mpc._lift_height = RobotPara().LIFT_HEIGHT;
-  mpc._tstep = RobotPara().Tstep;
+//  mpc._tstep = RobotPara().Tstep;
   
-  // initialization , run only once
+  // initialization
   // input step parameters
-  int stepnumber =15;
-  double stepwidthinput = RobotParaClass::HALF_HIP_WIDTH()*2; 
-  double steplengthinput;
+  stepwidthinput = RobotParaClass::HALF_HIP_WIDTH()*2; 
   if (RobotPara().name == "coman")
   {
       steplengthinput = 0.1;
@@ -60,21 +58,16 @@ MpcRTControlClass::MpcRTControlClass()
   else
   {DPRINTF("Errorrrrrrrr for IK\n");}
 
-  double stepheightinput = 0.0;  	  
-  mpc.FootStepInputs(stepnumber,stepwidthinput, steplengthinput, stepheightinput);
+  stepheightinput = 0.0;  	  
+  mpc.FootStepInputs(stepwidthinput, steplengthinput, stepheightinput);
   
   // offline initialization
-  mpc.Initialize(dt_mpc);
+  mpc.Initialize();
     
   
   _refer_t_max = mpc.Get_maximal_number_reference();
 
-
-
- 
  _t_int = 0;
- 
- 
   _t_walkdtime_flag = 0;
   _t_walkdtime_restart_flag = 0;
   _walkdtime1 =0;
@@ -89,35 +82,26 @@ MpcRTControlClass::MpcRTControlClass()
   
   _flag_walkdtime.setZero(_walkdtime_max);
   _stop_flag_walkdtime.setZero(_walkdtime_max);
-  
-  
+    
   _estimated_state.setZero();
   _estimated_state_global.setZero(19,_walkdtime_max);
   
   _Rfoot_location_feedback.setZero();
-  _Lfoot_location_feedback.setZero();
-  
+  _Lfoot_location_feedback.setZero(); 
   
   _state_generate_interpo.setZero(12,_walkdtime_max);
   
- 
   _COM_IN.setZero(3,_walkdtime_max);
   _COM_IN(2,0) = RobotParaClass::Z_C();
   _COM_IN(2,1) = RobotParaClass::Z_C();
-  _COM_est.setZero(3,_walkdtime_max);
-  
-  
-  
+  _COM_est.setZero(3,_walkdtime_max); 
   _body_IN.setZero(3,_walkdtime_max);
-  
-
   _FootR_IN.setZero(3,_walkdtime_max);
   _FootR_IN(1,0) = -RobotParaClass::HALF_HIP_WIDTH();
   _FootR_IN(1,1) = -RobotParaClass::HALF_HIP_WIDTH();
   _FootL_IN.setZero(3,_walkdtime_max);	
   _FootL_IN(1,0) = RobotParaClass::HALF_HIP_WIDTH();
-  _FootL_IN(1,1) = RobotParaClass::HALF_HIP_WIDTH();
-  
+  _FootL_IN(1,1) = RobotParaClass::HALF_HIP_WIDTH(); 
   _torso_angle.setZero();
    
 

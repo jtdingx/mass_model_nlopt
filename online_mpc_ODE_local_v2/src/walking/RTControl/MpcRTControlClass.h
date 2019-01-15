@@ -18,7 +18,7 @@ Description:	Header file of MpcRTControlClass
 #include <fstream>
 #include <time.h>
 
-const double dt_mpc = 0.1;
+const double dt_mpc = 0.1;   // definition of sampling time of MPC solover
 
 using namespace Eigen;
 using namespace std;
@@ -35,6 +35,9 @@ public:
 private:
 	void StartWalking();
 	void StopWalking();
+	
+	/// step parameters reference
+	double stepwidthinput,steplengthinput,stepheightinput;
 
         int _refer_t_max;
 	int _t_int;
