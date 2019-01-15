@@ -358,6 +358,18 @@ void MPCClass::Initialize(double dt_mpc)
 	_Rthetax = 1; _Rthetay = 1;
 	_alphathetax =1; _alphathetay = 1;
 	_beltathetax = 10; _beltathetay = 10;
+	
+	
+/*// // 	push recovery_test2:x:2:3,y:2:3: thetax:1:2,thetay:1:2  model2
+// 	 _Rx = 10;           _Ry = 1;            _Rz =10;
+// 	_alphax = 1000;       _alphay = 10;        _alphaz = 1000; 
+// 	_beltax = 200000;     _beltay = 100000;     _beltaz = 20000000;
+// 	_gamax =  10000000;    _gamay = 100000;  _gamaz = 200;
+// 	_Rthetax = 10; _Rthetay = 10;
+// 	_alphathetax =10000; _alphathetay = 1000;
+// 	_beltathetax = 100000000; _beltathetay = 1000000;*/	
+	
+	
 	  
 	}
 	else if(_robot_name  == "bigman"){
@@ -702,7 +714,7 @@ void MPCClass::Initialize(double dt_mpc)
 
 
 /////////////////////// local coordinate CoM solution---modified---------------------------------
-void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,18,1> estimated_state, Eigen::Vector3d _Rfoot_location_feedback, Eigen::Vector3d _Lfoot_location_feedback, bool _stopwalking)
+void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,18,1> estimated_state, Eigen::Vector3d _Rfoot_location_feedback, Eigen::Vector3d _Lfoot_location_feedback,double lamda, bool _stopwalking)
 {
  
        if (i<_n_end_walking)   ///////normal walking
@@ -1388,19 +1400,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	    _thetay(0,i) = _thetayk(0,i); _thetavy(0,i) = _thetayk(1,i); _thetaay(0,i)=_thetayk(2,i); 	
 	    
 	    
-	    // reference relative state
-	    
-  // /*  	  estimated_state(0,0) =  _comx(0,i-1) - _fxx_global(0); 
-  //  	  estimated_state(1,0) =  _comvx(0,i-1);
-  // 	  estimated_state(2,0) =  _comax(0,i-1); */  
-	    
-
-	    // reference relative state
-  // 	  estimated_state(3,0) =  _comy(0,i-1) - _fyy_global(0);  
-  // 	  estimated_state(4,0) =  _comvy(0,i-1);  
-  // 	  estimated_state(5,0) =  _comay(0,i-1);
-		  
-	    
+	    // reference relative state    
 	    /// /// relative state to the actual foot lcoation: very good
 	    if (_bjxx % 2 == 0)  // odd : left support
 	    {
@@ -1412,9 +1412,6 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	      estimated_state(0,0) =  estimated_state(0,0) - _Rfoot_location_feedback(0);
 	      estimated_state(3,0) =  estimated_state(3,0) - _Rfoot_location_feedback(1);	  
 	    }
-	    
-  // 	      cout << "i:"<<i<<endl;
-
   //////============================================================================================================================	      
   ////////////////////////////// state modified:====================================================================================
 
@@ -1439,7 +1436,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		
 		
 		
-  /*	  ///////////////================state feedback=========================================////
+  /*	  ///////////////================state feedback: determined by ratio parameter: lamda==============================////
 	    /// model0================COMX+COMY feedback
 
 	    _xk(0,i) = (estimated_state(0,0)+2*_xk(0,i))/3;             
@@ -2299,7 +2296,7 @@ void MPCClass::Foot_trajectory_solve(int j_index,bool _stopwalking)
 	  Eigen::Matrix<double, 7, 1> Rfootz_plan;
 	  Rfootz_plan.setZero();	
 	  Rfootz_plan(0) = _Rfootvz(j_index-1);     Rfootz_plan(1) = _Rfootaz(j_index-1); Rfootz_plan(2) = _Rfootz(j_index-1); Rfootz_plan(3) = _Lfootz(j_index)+_lift_height_ref(_bjx1-1);
-	  Rfootz_plan(4) = _footxyz_real(2,_bjxx);  Rfootz_plan(5) = 0;                   Rfootz_plan(6) = 0;	
+	  Rfootz_plan(4) = _footxyz_real(2,_bjxx);  Rfootz_plan(5) = 0;                   Rfootz_plan(6) = 0.001;	
 	  
 	  Eigen::Matrix<double, 7, 1> Rfootz_co;
 	  Rfootz_co.setZero();
@@ -2315,24 +2312,7 @@ void MPCClass::Foot_trajectory_solve(int j_index,bool _stopwalking)
 	  _Rfootz(j_index+1) = _Rfootz(j_index)+_dt * _Rfootvz(j_index);
 	  
 	  
-	  
-	  //////spline for Rfoot_Z
-/*	  std::vector<double> TXRFOOTZ(3), XRFOOTZ(3);
-	  TXRFOOTZ[0] = t_plan(0); TXRFOOTZ[1] = t_plan(1); TXRFOOTZ[2] = t_plan(2);	  
-	  XRFOOTZ[0] = Rfootx_plan(2);     XRFOOTZ[1] = Rfootx_plan(3);     XRFOOTZ[2] = Rfootx_plan(4);
-	  
-	  spline s1;
-	  s1.set_points(TXRFOOTZ, XRFOOTZ);
-	  _Rfootx(j_index)= s1(t_des);	  
-
-	  
-	  XRFOOTZ[0] = Rfooty_plan(2);     XRFOOTZ[1] = Rfooty_plan(3);     XRFOOTZ[2] = Rfooty_plan(4);	  
-	  s1.set_points(TXRFOOTZ, XRFOOTZ);
-	  _Rfooty(j_index) = s1(t_des);	  
 	  	  
-	  XRFOOTZ[0] = Rfootz_plan(2);     XRFOOTZ[1] = Rfootz_plan(3);     XRFOOTZ[2] = Rfootz_plan(4);	  
-	  s1.set_points(TXRFOOTZ, XRFOOTZ);
-	  _Rfootz(j_index) = s1(t_des);	*/	  
 	  
 	  
 	}
@@ -2486,7 +2466,7 @@ void MPCClass::Foot_trajectory_solve(int j_index,bool _stopwalking)
 	  Eigen::Matrix<double, 7, 1> Lfootz_plan;
 	  Lfootz_plan.setZero();		
 	  Lfootz_plan(0) = _Lfootvz(j_index-1);     Lfootz_plan(1) = _Lfootaz(j_index-1); Lfootz_plan(2) = _Lfootz(j_index-1); Lfootz_plan(3) = _Rfootz(j_index)+_lift_height_ref(_bjx1-1);
-	  Lfootz_plan(4) = _footxyz_real(2,_bjxx);  Lfootz_plan(5) = 0;                   Lfootz_plan(6) = 0;		  
+	  Lfootz_plan(4) = _footxyz_real(2,_bjxx);  Lfootz_plan(5) = 0;                   Lfootz_plan(6) = 0.001;		  
 	  
 	  
 	  Eigen::Matrix<double, 7, 1> Lfootz_co;
@@ -2501,25 +2481,7 @@ void MPCClass::Foot_trajectory_solve(int j_index,bool _stopwalking)
 	  _Lfootx(j_index+1) = _Lfootx(j_index)+_dt * _Lfootvx(j_index);
 	  _Lfooty(j_index+1) = _Lfooty(j_index)+_dt * _Lfootvy(j_index);
 	  _Lfootz(j_index+1) = _Lfootz(j_index)+_dt * _Lfootvz(j_index);
-	  
-	  
-/*	  //////spline for Rfoot_Z
-	  std::vector<double> TXRFOOTZ(3), XRFOOTZ(3);
-	  TXRFOOTZ[0] = t_plan(0); TXRFOOTZ[1] = t_plan(1); TXRFOOTZ[2] = t_plan(2);	  
-	  XRFOOTZ[0] = Lfootz_plan(2);     XRFOOTZ[1] = Lfootz_plan(3);     XRFOOTZ[2] = Lfootz_plan(4);
-	  
-	  spline s;
-	  s.set_points(TXRFOOTZ, XRFOOTZ);
-	  _Lfootz(j_index)= s(t_des);	  
-
-	  
-	  XRFOOTZ[0] = Lfooty_plan(2);     XRFOOTZ[1] = Lfooty_plan(3);     XRFOOTZ[2] = Lfooty_plan(4);	  
-	  s.set_points(TXRFOOTZ, XRFOOTZ);
-	  _Lfooty(j_index) = s(t_des);	  
-	  	  
-	  XRFOOTZ[0] = Lfootx_plan(2);     XRFOOTZ[1] = Lfootx_plan(3);     XRFOOTZ[2] = Lfootx_plan(4);	  
-	  s.set_points(TXRFOOTZ, XRFOOTZ);
-	  _Lfootx(j_index) = s(t_des);	*/  
+	   
 	  
 	  
 	}

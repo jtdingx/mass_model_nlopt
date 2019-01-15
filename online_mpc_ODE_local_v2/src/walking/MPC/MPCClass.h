@@ -38,7 +38,7 @@ public:
 	
 	
 	
-	void CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,18,1> estimated_state, Eigen::Vector3d _Rfoot_location_feedback, Eigen::Vector3d _Lfoot_location_feedback,bool _ISwalking);
+	void CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,18,1> estimated_state, Eigen::Vector3d _Rfoot_location_feedback, Eigen::Vector3d _Lfoot_location_feedback,double lamda,bool _ISwalking);
 	
 	
 	void solve_reactive_step_body_inclination_CoMz(); 
