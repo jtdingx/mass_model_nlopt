@@ -42,7 +42,7 @@ MpcRTControlClass::MpcRTControlClass()
   
   // initialization , run only once
   // input step parameters
-  int stepnumber =10;
+  int stepnumber =15;
   double stepwidthinput = RobotParaClass::HALF_HIP_WIDTH()*2; 
   double steplengthinput;
   if (RobotPara().name == "coman")
