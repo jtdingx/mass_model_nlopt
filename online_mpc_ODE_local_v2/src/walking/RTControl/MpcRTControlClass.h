@@ -91,6 +91,8 @@ private:
 	Vector3d _torso_angle;
 	void torso_angle(int arg1);
 	
+	double _feedback_lamda;
+	
 	
 	
 	

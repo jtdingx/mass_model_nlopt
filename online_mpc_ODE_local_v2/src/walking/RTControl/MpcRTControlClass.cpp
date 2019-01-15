@@ -32,7 +32,7 @@ MpcRTControlClass::MpcRTControlClass()
 #endif
 	
 
-  mpc._method_flag = 0;//strategy: 0: reactive step; 1: reactive step+ body inclination; 2: reactive step+ body inclination+height variation;	
+  mpc._method_flag = 2;//strategy: 0: reactive step; 1: reactive step+ body inclination; 2: reactive step+ body inclination+height variation;	
 
 	
   mpc._robot_name = RobotPara().name;
@@ -55,7 +55,7 @@ MpcRTControlClass::MpcRTControlClass()
   }
   else if (RobotPara().name == "cogimon")
    {
-    steplengthinput = 0.1;
+    steplengthinput = 0.15;
   } 
   else
   {DPRINTF("Errorrrrrrrr for IK\n");}
@@ -119,15 +119,7 @@ MpcRTControlClass::MpcRTControlClass()
   _FootL_IN(1,1) = RobotParaClass::HALF_HIP_WIDTH();
   
   _torso_angle.setZero();
-  
- //////////////////parameters for global_coordinate 
-//   _ppx = 0.01; _pdx = 0.000001;     _pix = 0.000001;
-//   _ppy = 0.01;  _pdy = 0.000001;    _piy = 0.00000001;
-//   _ppz = 0.01;  _pdz = 0.000001;    _piz = 0.00000001; 
-//   
-//   _ppthetax= 0.01; _pdthetax =0; _pithetax =0.0001;
-//   _ppthetay= 0.01; _pdthetay = 0;_pithetax =0.0001; 
-//   _ppthetaz= 0.0001; _pdthetaz = 0;_pithetaz =0.0000001;   
+   
 
 //// parameters for local coordinate  
   _ppx = 0.01; _pdx = 0.0001;     _pix = 0.000001;
@@ -140,6 +132,8 @@ MpcRTControlClass::MpcRTControlClass()
   
   _error_com_position.setZero(3);
   _error_torso_angle.setZero(3);
+  
+  _feedback_lamda = 0;
   
   
 }
@@ -204,7 +198,7 @@ void MpcRTControlClass::WalkingReactStepping()
 		  if (_flag_walkdtime(_walkdtime1 -1) < _t_int)
 		  {		
     // 		mpc.CoM_foot_trajection_generation(_t_int, _estimated_state, _methx);
-		    mpc.CoM_foot_trajection_generation_local(_t_int, _estimated_state,_Rfoot_location_feedback,_Lfoot_location_feedback,_stop_walking);		
+		    mpc.CoM_foot_trajection_generation_local(_t_int, _estimated_state,_Rfoot_location_feedback,_Lfoot_location_feedback,_feedback_lamda,_stop_walking);		
 		    mpc.Foot_trajectory_solve(_t_int, _stop_walking);	
       // 	      cout << "walking ref generation"<<endl;	      
 		  }
@@ -496,7 +490,7 @@ void MpcRTControlClass::WalkingReactStepping()
 		  if (_flag_walkdtime(_walkdtime1 -1) < _t_int)
 		  {		
     // 		mpc.CoM_foot_trajection_generation(_t_int, _estimated_state, _methx);
-		    mpc.CoM_foot_trajection_generation_local(_t_int, _estimated_state,_Rfoot_location_feedback,_Lfoot_location_feedback,_stop_walking);		
+		    mpc.CoM_foot_trajection_generation_local(_t_int, _estimated_state,_Rfoot_location_feedback,_Lfoot_location_feedback,_feedback_lamda,_stop_walking);		
 		    mpc.Foot_trajectory_solve(_t_int, _stop_walking);	
       // 	      cout << "walking ref generation"<<endl;	      
 		  }
@@ -724,7 +718,7 @@ void MpcRTControlClass::WalkingReactStepping()
 		IsStartWalk = false;
 // 		_t_walkdtime_restart_flag = walkdtime;
 		
-/*		
+		
 		_t_walkdtime_restart_flag = walkdtime;
 		
 		if (_walkdtime1 == _walkdtime_max)
@@ -765,7 +759,7 @@ void MpcRTControlClass::WalkingReactStepping()
 
 		  int _t_walkdtime_restart_flagxxx = walkdtime;
 		  cout<< "_t_walkdtime_restart_flag"<<_t_walkdtime_restart_flag<<endl;		  
-		}*/
+		}
 
 		
 		
