@@ -587,8 +587,7 @@ void MPCClass::Initialize()
 	 ZMPx_constraints_half[jxx-1] = - (_Si).transpose() * _Si * _pau * _Sjz;
 	  	  
          ZMPy_constraints_offfline[jxx-1] = (_Si * _ppu * _Sjy).transpose() * _Si * _pau * _Sjz - (_Si * _pau * _Sjy).transpose() * _Si * _ppu * _Sjz;
-	 ZMPy_constraints_half[jxx-1] = - (_Si).transpose() * _Si * _pau * _Sjz;
-	      
+	 ZMPy_constraints_half[jxx-1] = - (_Si).transpose() * _Si * _pau * _Sjz;	      
 	}
         
 
@@ -641,6 +640,51 @@ void MPCClass::Initialize()
 	_pvupvs = _pvu.transpose() * _pvs;	
         _ppupps = _ppu.transpose() * _pps;
 	
+
+
+	vector <Eigen::Matrix<double,3, _Nt>> xx_offline1(_nh)  ;
+	for (int j=0;j<_nh; j++)
+	{
+	  xx_offline1[j]= Eigen::Matrix<double,3, _Nt>::Zero();
+	}
+
+	_xkZMPx_constraints = xx_offline1;
+	_zkZMPx_constraints = xx_offline1;	
+	for(int jxx=1; jxx<=_nh; jxx++)
+	{
+	  _xkZMPx_constraints[jxx-1] = (_pps.row(jxx-1)).transpose()*_pau.row(jxx-1)*_Sjz - (_pas.row(jxx-1)).transpose()* _ppu.row(jxx-1)*_Sjz;
+	  _zkZMPx_constraints[jxx-1] = (_pas.row(jxx-1)).transpose()*_ppu.row(jxx-1)*_Sjx - (_pps.row(jxx-1)).transpose() *_pau.row(jxx-1)*_Sjx;
+	}
+	
+	_ppuSjx.setZero();
+	_ppuSjx = _ggg(0,0)*_ppu*_Sjx;
+	_pauSjx.setZero();
+	_pauSjx = _pau*_Sjx;
+	_pauSjz1.setZero();
+	_pauSjz1 = _zmpx_ub*_pau*_Sjz;
+	_pauSjz2.setZero();
+	_pauSjz2 = _zmpx_lb*_pau*_Sjz;	
+	
+	_pauSjthetay.setZero();
+	_pauSjthetay = _j_ini * _pau * _Sjthetay;
+
+
+	vector <Eigen::Matrix3d> xxx_offline1(_nh);
+	for (int j=0;j<_nh; j++)
+	{
+	  xxx_offline1[j]= Eigen::Matrix3d::Zero();
+	}
+
+	_xkzk_constraints = xxx_offline1;
+
+	for(int jxx=1; jxx<=_nh; jxx++)
+	{
+	  _xkzk_constraints[jxx-1] = (_pps.row(jxx-1)).transpose() *_pas.row(jxx-1) - (_pas.row(jxx-1)).transpose() *_pps.row(jxx-1);
+	}	
+	_gzmpxub = _ggg *_zmpx_ub;
+	_gzmpxlb = _ggg *_zmpx_lb;	
+	
+
 	
 	
 	
@@ -884,18 +928,26 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	      {
 		// ZMP constraints: merger the simliar item and calculated offline
 		// x-ZMP upper boundary                                      
-		_p_i_x_t_up.col(jxx-1) = _mass * (((_pps.row(jxx-1) * _xk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjz + (_pas.row(jxx-1)*_zk.col(i-1)).transpose()*_ppu.row(jxx-1)*_Sjx + _ggg*_ppu.row(jxx-1)*_Sjx - ((_pps.row(jxx-1) * _zk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjx + _pas.row(jxx-1) * _xk.col(i-1)* _ppu.row(jxx-1)* _Sjz) + _Zsc.row(i+jxx-1)*_pau.row(jxx-1)*_Sjx - ((_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfx + (_v_i.row(jxx-1) * _fx).transpose() *_pau.row(jxx-1)*_Sjz) - _ggg*_VV_i.row(jxx-1)*_Sfx - _zmpx_ub*_pau.row(jxx-1)*_Sjz).transpose()) - (_j_ini * _pau.row(jxx-1) * _Sjthetay).transpose();		
-		_del_i_x_up.col(jxx-1) = _mass * ((_pps.row(jxx-1) * _xk.col(i-1)).transpose() *_pas.row(jxx-1)*_zk.col(i-1) + _ggg*_pps.row(jxx-1) * _xk.col(i-1) - (_pas.row(jxx-1) * _xk.col(i-1)).transpose() *_pps.row(jxx-1)*_zk.col(i-1) + (_pas.row(jxx-1) * _xk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - (_v_i.row(jxx-1) * _fx).transpose() *_pas.row(jxx-1)*_zk.col(i-1) - _ggg * _v_i.row(jxx-1) * _fx - _zmpx_ub*_pas.row(jxx-1)*_zk.col(i-1) - _ggg *_zmpx_ub) - _j_ini * _pas.row(jxx-1) * _thetayk.col(i-1);
+// 		_p_i_x_t_up.col(jxx-1) = _mass * ((  (_pps.row(jxx-1) * _xk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjz + (_pas.row(jxx-1)*_zk.col(i-1)).transpose()*_ppu.row(jxx-1)*_Sjx + _ggg*_ppu.row(jxx-1)*_Sjx - ( (_pps.row(jxx-1) * _zk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjx + _pas.row(jxx-1) * _xk.col(i-1)* _ppu.row(jxx-1)* _Sjz    ) + _Zsc.row(i+jxx-1)*_pau.row(jxx-1)*_Sjx - ((_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfx + (_v_i.row(jxx-1) * _fx).transpose() *_pau.row(jxx-1)*_Sjz) - _ggg*_VV_i.row(jxx-1)*_Sfx - _zmpx_ub*_pau.row(jxx-1)*_Sjz).transpose()) - (_j_ini * _pau.row(jxx-1) * _Sjthetay).transpose();		
+// 		_del_i_x_up.col(jxx-1) = _mass * ((_pps.row(jxx-1) * _xk.col(i-1)).transpose() *_pas.row(jxx-1)*_zk.col(i-1) + _ggg*_pps.row(jxx-1) * _xk.col(i-1) - (_pas.row(jxx-1) * _xk.col(i-1)).transpose() *_pps.row(jxx-1)*_zk.col(i-1) + (_pas.row(jxx-1) * _xk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - (_v_i.row(jxx-1) * _fx).transpose() *_pas.row(jxx-1)*_zk.col(i-1) - _ggg * _v_i.row(jxx-1) * _fx - _zmpx_ub*_pas.row(jxx-1)*_zk.col(i-1) - _ggg *_zmpx_ub) - _j_ini * _pas.row(jxx-1) * _thetayk.col(i-1);
+// 		_p_i_x_t_up.col(jxx-1) = _mass * ((  (_pps.row(jxx-1) * _xk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjz + (_pas.row(jxx-1)*_zk.col(i-1)).transpose()*_ppu.row(jxx-1)*_Sjx + _ggg*_ppu.row(jxx-1)*_Sjx - ( (_pps.row(jxx-1) * _zk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjx + _pas.row(jxx-1) * _xk.col(i-1)* _ppu.row(jxx-1)* _Sjz    ) + _Zsc.row(i+jxx-1)*_pau.row(jxx-1)*_Sjx - ( (_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfx ) - _ggg*_VV_i.row(jxx-1)*_Sfx - _zmpx_ub*_pau.row(jxx-1)*_Sjz ).transpose() ) - (_j_ini * _pau.row(jxx-1) * _Sjthetay).transpose();		
+// 		_del_i_x_up.col(jxx-1) = _mass * ((_pps.row(jxx-1) * _xk.col(i-1)).transpose() *_pas.row(jxx-1)*_zk.col(i-1) + _ggg*_pps.row(jxx-1) * _xk.col(i-1) - (_pas.row(jxx-1) * _xk.col(i-1)).transpose() *_pps.row(jxx-1)*_zk.col(i-1) + (_pas.row(jxx-1) * _xk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - _zmpx_ub*_pas.row(jxx-1)*_zk.col(i-1) - _ggg *_zmpx_ub) - _j_ini * _pas.row(jxx-1) * _thetayk.col(i-1);
 
+	        _p_i_x_t_up.col(jxx-1) = _mass * ((  (_xk.col(i-1)).transpose() * _xkZMPx_constraints[jxx-1] + (_zk.col(i-1)).transpose()*_zkZMPx_constraints[jxx-1] + _ppuSjx.row(jxx-1) + _Zsc.row(i+jxx-1)*_pauSjx.row(jxx-1) - ( (_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfx ) - _ggg*_VV_i.row(jxx-1)*_Sfx - _pauSjz1.row(jxx-1) ).transpose() ) - (_pauSjthetay.row(jxx-1)).transpose();		
+		_del_i_x_up.col(jxx-1) = _mass * ((_xk.col(i-1)).transpose()*_xkzk_constraints[jxx-1]*_zk.col(i-1) + _ggg*_pps.row(jxx-1) * _xk.col(i-1) + (_pas.row(jxx-1) * _xk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - _zmpx_ub*_pas.row(jxx-1)*_zk.col(i-1) - _gzmpxub) - _j_ini * _pas.row(jxx-1) * _thetayk.col(i-1);
 
 		// x-ZMP low boundary
-		_p_i_x_t_low.col(jxx-1) = (_p_i_x_t_up.col(jxx-1).transpose() + _mass * _zmpx_ub*_pau.row(jxx-1)*_Sjz - _mass * _zmpx_lb*_pau.row(jxx-1)*_Sjz).transpose();	      
-		_del_i_x_low.col(jxx-1) = _del_i_x_up.col(jxx-1) +_mass*_zmpx_ub*_pas.row(jxx-1)*_zk.col(i-1)+  _mass * _ggg*_zmpx_ub - _mass*_zmpx_lb*_pas.row(jxx-1)*_zk.col(i-1)-_mass * _ggg*_zmpx_lb;
+		_p_i_x_t_low.col(jxx-1) = (_p_i_x_t_up.col(jxx-1).transpose() + _mass * (_pauSjz1.row(jxx-1) - _pauSjz2.row(jxx-1))).transpose();	      
+		_del_i_x_low.col(jxx-1) = _del_i_x_up.col(jxx-1) +_mass*_zmpx_ub*_pas.row(jxx-1)*_zk.col(i-1)+  _mass * _gzmpxub - _mass*_zmpx_lb*_pas.row(jxx-1)*_zk.col(i-1)-_mass * _gzmpxlb;
 		
 		// y-ZMP upper boundary
+//     		_p_i_y_t_up.col(jxx-1) = _mass * (((_pps.row(jxx-1) * _yk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjz + (_pas.row(jxx-1)*_zk.col(i-1)).transpose()*_ppu.row(jxx-1)*_Sjy + _ggg*_ppu.row(jxx-1)*_Sjy - ((_pps.row(jxx-1) * _zk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjy + _pas.row(jxx-1) * _yk.col(i-1)* _ppu.row(jxx-1)* _Sjz) + _Zsc.row(i+jxx-1)*_pau.row(jxx-1)*_Sjy - ((_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfy + (_v_i.row(jxx-1) * _fy).transpose() *_pau.row(jxx-1)*_Sjz) - _ggg*_VV_i.row(jxx-1)*_Sfy - _zmpy_ub*_pau.row(jxx-1)*_Sjz).transpose()) + (_j_ini * _pau.row(jxx-1) * _Sjthetax).transpose();
+// 		_del_i_y_up.col(jxx-1) = _mass * ((_pps.row(jxx-1) * _yk.col(i-1)).transpose() *_pas.row(jxx-1)*_zk.col(i-1) + _ggg*_pps.row(jxx-1) * _yk.col(i-1) - (_pas.row(jxx-1) * _yk.col(i-1)).transpose() *_pps.row(jxx-1)*_zk.col(i-1) + (_pas.row(jxx-1) * _yk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - (_v_i.row(jxx-1) * _fy).transpose() *_pas.row(jxx-1)*_zk.col(i-1) - _ggg *_v_i.row(jxx-1) * _fy - _zmpy_ub*_pas.row(jxx-1)*_zk.col(i-1) - _ggg *_zmpy_ub); + _j_ini * _pas.row(jxx-1) * _thetaxk.col(i-1);	      
     		_p_i_y_t_up.col(jxx-1) = _mass * (((_pps.row(jxx-1) * _yk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjz + (_pas.row(jxx-1)*_zk.col(i-1)).transpose()*_ppu.row(jxx-1)*_Sjy + _ggg*_ppu.row(jxx-1)*_Sjy - ((_pps.row(jxx-1) * _zk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjy + _pas.row(jxx-1) * _yk.col(i-1)* _ppu.row(jxx-1)* _Sjz) + _Zsc.row(i+jxx-1)*_pau.row(jxx-1)*_Sjy - ((_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfy + (_v_i.row(jxx-1) * _fy).transpose() *_pau.row(jxx-1)*_Sjz) - _ggg*_VV_i.row(jxx-1)*_Sfy - _zmpy_ub*_pau.row(jxx-1)*_Sjz).transpose()) + (_j_ini * _pau.row(jxx-1) * _Sjthetax).transpose();
-		_del_i_y_up.col(jxx-1) = _mass * ((_pps.row(jxx-1) * _yk.col(i-1)).transpose() *_pas.row(jxx-1)*_zk.col(i-1) + _ggg*_pps.row(jxx-1) * _yk.col(i-1) - (_pas.row(jxx-1) * _yk.col(i-1)).transpose() *_pps.row(jxx-1)*_zk.col(i-1) + (_pas.row(jxx-1) * _yk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - (_v_i.row(jxx-1) * _fy).transpose() *_pas.row(jxx-1)*_zk.col(i-1) - _ggg *_v_i.row(jxx-1) * _fy - _zmpy_ub*_pas.row(jxx-1)*_zk.col(i-1) - _ggg *_zmpy_ub); + _j_ini * _pas.row(jxx-1) * _thetaxk.col(i-1);	      
+		_del_i_y_up.col(jxx-1) = _mass * ((_pps.row(jxx-1) * _yk.col(i-1)).transpose() *_pas.row(jxx-1)*_zk.col(i-1) + _ggg*_pps.row(jxx-1) * _yk.col(i-1) - (_pas.row(jxx-1) * _yk.col(i-1)).transpose() *_pps.row(jxx-1)*_zk.col(i-1) + (_pas.row(jxx-1) * _yk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - _zmpy_ub*_pas.row(jxx-1)*_zk.col(i-1) - _ggg *_zmpy_ub) + _j_ini * _pas.row(jxx-1) * _thetaxk.col(i-1);	      
 	      
+		
+		
 		// y-ZMP low boundary
 		_phi_i_y_low = _phi_i_y_up;  
 		_p_i_y_t_low.col(jxx-1) = (_p_i_y_t_up.col(jxx-1).transpose() + _mass * _zmpy_ub*_pau.row(jxx-1)*_Sjz - _mass * _zmpy_lb*_pau.row(jxx-1)*_Sjz).transpose();	      
