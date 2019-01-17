@@ -297,5 +297,20 @@ private:
 	double _t_end_walking;
 	
 	Eigen::Vector4d  _comy_matrix_inv;
+	
+	
+	
+	
+///    offline calculated matrices	
+	Eigen::Matrix<double, _nh, _nh> _ppu_T;
+	Eigen::Matrix<double, _nh, 3> _pvupvs, _ppupps;
+	
+	
+	
+	
+	
+	
+	
+	
 
 };

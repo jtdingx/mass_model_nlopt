@@ -632,6 +632,18 @@ void MPCClass::Initialize()
 	_t_end_walking = _tx(_footstepsnumber-1)- 9*_tstep/4;  // ending time when normal walking ends
 	_n_end_walking = round(_t_end_walking/_dt);	
 	_comy_matrix_inv.setZero();	
+	
+	
+	
+	//// offline calculated matrices
+	
+	_ppu_T = _ppu.transpose();
+	_pvupvs = _pvu.transpose() * _pvs;	
+        _ppupps = _ppu.transpose() * _pps;
+	
+	
+	
+	
 }
 
 
@@ -686,7 +698,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	    }
 	    
 	    _mx = _bjx2 - _bjx1 +1;
-            /// find out the relative postion of step cycle switching time to the predictive window 	    
+            /// find out the relative postion of start-time of predictive step cycles to the predictive window 	    
 	    for (int j=1;j<_mx; j++)
 	    {
 	      Indexfind(_tx(_bjx1+j-1),xyz2);
@@ -706,7 +718,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		
 		if (jjj == 1)
 		{
-		  _VV_i.block(0, 0, xxx, 1).setOnes();
+		  _VV_i.block(0, 0, xxx, 1).setOnes();   ///dynamic size 
 		}
 		else
 		{	
@@ -717,7 +729,8 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	    }
 	    else
 	    {	
-	      _v_i.segment(0, xxx).setOnes();	      
+	      _v_i.head(xxx).setOnes();	      
+/*	      _v_i.segment(0, xxx).setOnes();*/	      
 	      if (abs(_mx - 2) <=0.00001)
 	      {
 		_n_vis = 1;
@@ -731,34 +744,43 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		_VV_i.block(_tnx(1), 1, xxx2, 1).setOnes();	      	      
 	      }
 	    }
-	    
+	     
+	    _flag(i-1,0)= _n_vis;	  ////_n_vis flag: for judging if there is a switch between current support leg for i-1 and i sampling time    
+	    _flag_global(i-1,0) = _bjxx;  // walking cycle of current sampling time
+	    _flag_global(i,0) = _bjx1;	  // walking cycle of next one sampling time 
   
-	    _flag(i-1,0)= _n_vis;	    
-	    _flag_global(i-1,0) = _bjxx;
-	    _flag_global(i,0) = _bjx1;	  
-
-  ////////////////////////////////////////////////////////////////////////////////////	  
-  //============================================================//	  
-	  
-  
-	    
-  //////////////////// relative state: 	  
-	    ///// pass the actual stage into the control loop	  	  	      
+  //================cuttent state switch to the current support; ====================//	    
+	    ///// pass the actual state into the control loop:
+	    /// output _Footx_global_relative and _Footy_global_relative are the global xk(0) and yk(0)
 	    if (i>1)
 	    {
-	      _Footx_global_relative = _xk(0,i-1) + _fxx_global;
+	      _Footx_global_relative = _xk(0,i-1) + _fxx_global;    ///_fxx_global is the old one: 
 	      _Footy_global_relative = _yk(0,i-1) + _fyy_global;	    
-	    }
+	    }	     
+	    
 	    // current foot location
 	    _fx =0;
 	    _fy = 0;	  	    
-	    _fxx_global = _footx_real(_bjxx-1);
-	    _fyy_global = _footy_real(_bjxx-1);	    
+	    _fxx_global = _footx_real(_bjxx-1);      ////update the supporting foot
+	    _fyy_global = _footy_real(_bjxx-1);	     ////update the supporting foot
 
+  // 	      // relative state switch	: the output xk(0) and yk(0) is relative to the current foot location      
+	    if (i>1)
+	    {
+	      if (_flag_global(i-2,0) < _flag_global(i-1,0) )  //current and last support foot are not the same
+	      {
+		/// reference relative state switch
+		_xk(0,i-1) = _Footx_global_relative - _fxx_global; 
+		_yk(0,i-1) = _Footy_global_relative - _fyy_global;		
+	      }
+	    }
+	    
+    
+            /////adjust the reference step length and step width	    
 	    if (_n_vis ==1)
 	    {
-	      _Lx_ref(0) = _footx_ref(_bjx2-1) - _fxx_global;
-	      _Ly_ref(0) = _footy_ref(_bjx2-1) - _fyy_global;
+	      _Lx_ref(0) = _footx_ref(_bjx2-1) - _fxx_global;  //relative to the current location ///here, position tracking,thus, use the reference location postion:_footx_ref
+	      _Ly_ref(0) = _footy_ref(_bjx2-1) - _fyy_global;  // relative to the current location//here,position tracking, thus, use the reference location postion:_footx_ref
 	      _Lz_ref(0) = _footz_ref(_bjx2-1);
 	      _Lx_ref(1) = 0;
 	      _Ly_ref(1) = 0;
@@ -773,12 +795,12 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	      _Ly_ref(1) = _footy_ref(_bjx2-1) - _fyy_global;
 	      _Lz_ref(1) = _footz_ref(_bjx2-1);	    
 	    }	    
-	  // com_center_ref
+	  // com_center_ref: set to be the center of supporting foot
 	    _comx_center_ref = _v_i*_fx + _VV_i*_Lx_ref;
 	    _comy_center_ref = _v_i*_fy + _VV_i*_Ly_ref;
 	    _comz_center_ref = _Zsc.segment<_nh>(i) + _Hcom;
 	    
-	    /// hot start
+	    /// hot start:initilize _V_ini
 	    if (i==1)
 	    {
 	      _V_ini(5*_nh) = _footx_ref(1);
@@ -817,21 +839,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	      }
 	    }
 	      	  
-  // 	      // relative state switch	      
-	    if (i>1)
-	    {
-	      if (_flag_global(i-2,0) < _flag_global(i-1,0) )
-	      {
-		/// reference relative state switch
-	      
-		_xk(0,i-1) = _Footx_global_relative - _fxx_global; 
-		_yk(0,i-1) = _Footy_global_relative - _fyy_global;
-		
-	      }
-
-	    }
-	    //////////////////////////////////////////////////////////////////////////============================================================//////////////////////////////////////////
-	    // foot location constraints: be careful that the step number is change: so should be intialized in each whole loop
+	    // foot location constraints: be careful that the step number is change: so should be setZero in each whole loop
 	    _H_q_footx_up.setZero();
 	    _F_foot_upx.setZero();
 	    _H_q_footx_low.setZero();
@@ -839,14 +847,12 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	    _H_q_footy_up.setZero();
 	    _F_foot_upy.setZero();
 	    _H_q_footy_low.setZero();
-	    _F_foot_lowy.setZero();
-	    
+	    _F_foot_lowy.setZero();	    
 
-	    // boundary initialzation
+	    // boundary initialzation: footx, footy,footz select matrix: 2*(5*_nh+3*_nstep)
 	    _Sfx.setZero();
 	    _Sfy.setZero();
-	    _Sfz.setZero();
-	    
+	    _Sfz.setZero();	    
 	    if (_n_vis ==1)
 	    {
 	      _Sfx(0,5*_nh) = 1;
@@ -860,87 +866,78 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	      _Sfy(0,5*_nh+_nstep) = 1;
 	      _Sfy(1,5*_nh+_nstep+1) = 1;
 	      _Sfz(0,5*_nh+2*_nstep) = 1;	 
-	      _Sfz(1,5*_nh+2*_nstep+1) = 1;	
-	      
+	      _Sfz(1,5*_nh+2*_nstep+1) = 1;		      
 	    }
-		
-		  
-	    
 
 	    //SQP MOdels	 
-	      _q_goal.block<_nh, 1>(0, 0) = _alphax * _pvu.transpose() * _pvs * _xk.col(i-1) + _beltax * _ppu.transpose() * _pps * _xk.col(i-1) - _beltax * _ppu.transpose() * _comx_center_ref;
-	      _q_goal.block<_nh, 1>(_nh, 0) = _alphay * _pvu.transpose() * _pvs * _yk.col(i-1) + _beltay * _ppu.transpose() * _pps * _yk.col(i-1) - _beltay * _ppu.transpose() * _comy_center_ref;
-	      _q_goal.block<_nh, 1>(2*_nh, 0) = _alphaz * _pvu.transpose() * _pvs * _zk.col(i-1) + _beltaz * _ppu.transpose() * _pps * _zk.col(i-1) - _beltaz * _ppu.transpose() * _comz_center_ref;
-	      _q_goal.block<_nh, 1>(3*_nh, 0) = _alphathetax * _pvu.transpose() * _pvs * _thetaxk.col(i-1) + _beltathetax * _ppu.transpose() * _pps * _thetaxk.col(i-1) - _beltathetax * _ppu.transpose() * _thetax_center_ref;
-	      _q_goal.block<_nh, 1>(4*_nh, 0) = _alphathetay * _pvu.transpose() * _pvs * _thetayk.col(i-1) + _beltathetay * _ppu.transpose() * _pps * _thetayk.col(i-1) - _beltathetay * _ppu.transpose() * _thetay_center_ref;
+	      _q_goal.block<_nh, 1>(0, 0) = (_alphax * _pvupvs + _beltax * _ppupps )* _xk.col(i-1) - _beltax * _ppu_T * _comx_center_ref;
+	      _q_goal.block<_nh, 1>(_nh, 0) = (_alphay * _pvupvs  + _beltay * _ppupps )* _yk.col(i-1) - _beltay * _ppu_T * _comy_center_ref;
+	      _q_goal.block<_nh, 1>(2*_nh, 0) = (_alphaz * _pvupvs + _beltaz * _ppupps )* _zk.col(i-1) - _beltaz * _ppu_T * _comz_center_ref;
+	      _q_goal.block<_nh, 1>(3*_nh, 0) = (_alphathetax * _pvupvs + _beltathetax * _ppupps )* _thetaxk.col(i-1) - _beltathetax * _ppu_T * _thetax_center_ref;
+	      _q_goal.block<_nh, 1>(4*_nh, 0) = (_alphathetay * _pvupvs + _beltathetay * _ppupps )* _thetayk.col(i-1) - _beltathetay * _ppu_T * _thetay_center_ref;
 	      _q_goal.block<_nstep, 1>(5*_nh, 0) = -_gamax * _Lx_ref;
 	      _q_goal.block<_nstep, 1>(5*_nh+_nstep, 0) = -_gamay * _Ly_ref;
 	      _q_goal.block<_nstep, 1>(5*_nh+2*_nstep, 0) = -_gamaz * _Lz_ref;
-
-	      
-		
-	    ///// the following code only run once in each loop   
+	
+	    ///// the following code only run once in each loop:   
 	      for(int jxx=1; jxx<=_nh; jxx++)
 	      {
-		_Si.setZero();
-		_Si(0,jxx-1) = 1;
-		
-		// ZMP constraints
+		// ZMP constraints: merger the simliar item and calculated offline
 		// x-ZMP upper boundary                                      
-		_p_i_x_t_up.col(jxx-1) = _mass * (((_Si * _pps * _xk.col(i-1)).transpose() *_Si*_pau*_Sjz + (_Si*_pas*_zk.col(i-1)).transpose()*_Si*_ppu*_Sjx + _ggg*_Si*_ppu*_Sjx - ((_Si * _pps * _zk.col(i-1)).transpose() *_Si*_pau*_Sjx + _Si * _pas * _xk.col(i-1)* _Si* _ppu* _Sjz) + _Zsc.row(i+jxx-1)*_Si*_pau*_Sjx - ((_Si * _pas * _zk.col(i-1)).transpose() *_Si*_VV_i*_Sfx + (_Si * _v_i * _fx).transpose() *_Si*_pau*_Sjz) - _ggg*_Si*_VV_i*_Sfx - _zmpx_ub*_Si*_pau*_Sjz).transpose()) - (_j_ini * _Si*_pau * _Sjthetay).transpose();		
-		_del_i_x_up.col(jxx-1) = _mass * ((_Si * _pps * _xk.col(i-1)).transpose() *_Si*_pas*_zk.col(i-1) + _ggg*_Si * _pps * _xk.col(i-1) - (_Si * _pas * _xk.col(i-1)).transpose() *_Si*_pps*_zk.col(i-1) + (_Si * _pas * _xk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - (_Si * _v_i * _fx).transpose() *_Si*_pas*_zk.col(i-1) - _ggg *_Si * _v_i * _fx - _zmpx_ub*_Si*_pas*_zk.col(i-1) - _ggg *_zmpx_ub) - _j_ini * _Si*_pas * _thetayk.col(i-1);
+		_p_i_x_t_up.col(jxx-1) = _mass * (((_pps.row(jxx-1) * _xk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjz + (_pas.row(jxx-1)*_zk.col(i-1)).transpose()*_ppu.row(jxx-1)*_Sjx + _ggg*_ppu.row(jxx-1)*_Sjx - ((_pps.row(jxx-1) * _zk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjx + _pas.row(jxx-1) * _xk.col(i-1)* _ppu.row(jxx-1)* _Sjz) + _Zsc.row(i+jxx-1)*_pau.row(jxx-1)*_Sjx - ((_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfx + (_v_i.row(jxx-1) * _fx).transpose() *_pau.row(jxx-1)*_Sjz) - _ggg*_VV_i.row(jxx-1)*_Sfx - _zmpx_ub*_pau.row(jxx-1)*_Sjz).transpose()) - (_j_ini * _pau.row(jxx-1) * _Sjthetay).transpose();		
+		_del_i_x_up.col(jxx-1) = _mass * ((_pps.row(jxx-1) * _xk.col(i-1)).transpose() *_pas.row(jxx-1)*_zk.col(i-1) + _ggg*_pps.row(jxx-1) * _xk.col(i-1) - (_pas.row(jxx-1) * _xk.col(i-1)).transpose() *_pps.row(jxx-1)*_zk.col(i-1) + (_pas.row(jxx-1) * _xk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - (_v_i.row(jxx-1) * _fx).transpose() *_pas.row(jxx-1)*_zk.col(i-1) - _ggg * _v_i.row(jxx-1) * _fx - _zmpx_ub*_pas.row(jxx-1)*_zk.col(i-1) - _ggg *_zmpx_ub) - _j_ini * _pas.row(jxx-1) * _thetayk.col(i-1);
 
 
 		// x-ZMP low boundary
-		_p_i_x_t_low.col(jxx-1) = (_p_i_x_t_up.col(jxx-1).transpose() + _mass * _zmpx_ub*_Si*_pau*_Sjz - _mass * _zmpx_lb*_Si*_pau*_Sjz).transpose();	      
-		_del_i_x_low.col(jxx-1) = _del_i_x_up.col(jxx-1) +_mass*_zmpx_ub*_Si*_pas*_zk.col(i-1)+  _mass * _ggg*_zmpx_ub - _mass*_zmpx_lb*_Si*_pas*_zk.col(i-1)-_mass * _ggg*_zmpx_lb;
+		_p_i_x_t_low.col(jxx-1) = (_p_i_x_t_up.col(jxx-1).transpose() + _mass * _zmpx_ub*_pau.row(jxx-1)*_Sjz - _mass * _zmpx_lb*_pau.row(jxx-1)*_Sjz).transpose();	      
+		_del_i_x_low.col(jxx-1) = _del_i_x_up.col(jxx-1) +_mass*_zmpx_ub*_pas.row(jxx-1)*_zk.col(i-1)+  _mass * _ggg*_zmpx_ub - _mass*_zmpx_lb*_pas.row(jxx-1)*_zk.col(i-1)-_mass * _ggg*_zmpx_lb;
 		
 		// y-ZMP upper boundary
-    		_p_i_y_t_up.col(jxx-1) = _mass * (((_Si * _pps * _yk.col(i-1)).transpose() *_Si*_pau*_Sjz + (_Si*_pas*_zk.col(i-1)).transpose()*_Si*_ppu*_Sjy + _ggg*_Si*_ppu*_Sjy - ((_Si * _pps * _zk.col(i-1)).transpose() *_Si*_pau*_Sjy + _Si * _pas * _yk.col(i-1)* _Si* _ppu* _Sjz) + _Zsc.row(i+jxx-1)*_Si*_pau*_Sjy - ((_Si * _pas * _zk.col(i-1)).transpose() *_Si*_VV_i*_Sfy + (_Si * _v_i * _fy).transpose() *_Si*_pau*_Sjz) - _ggg*_Si*_VV_i*_Sfy - _zmpy_ub*_Si*_pau*_Sjz).transpose()) + (_j_ini * _Si*_pau * _Sjthetax).transpose();
-		_del_i_y_up.col(jxx-1) = _mass * ((_Si * _pps * _yk.col(i-1)).transpose() *_Si*_pas*_zk.col(i-1) + _ggg*_Si * _pps * _yk.col(i-1) - (_Si * _pas * _yk.col(i-1)).transpose() *_Si*_pps*_zk.col(i-1) + (_Si * _pas * _yk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - (_Si * _v_i * _fy).transpose() *_Si*_pas*_zk.col(i-1) - _ggg *_Si * _v_i * _fy - _zmpy_ub*_Si*_pas*_zk.col(i-1) - _ggg *_zmpy_ub); + _j_ini * _Si*_pas * _thetaxk.col(i-1);	      
+    		_p_i_y_t_up.col(jxx-1) = _mass * (((_pps.row(jxx-1) * _yk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjz + (_pas.row(jxx-1)*_zk.col(i-1)).transpose()*_ppu.row(jxx-1)*_Sjy + _ggg*_ppu.row(jxx-1)*_Sjy - ((_pps.row(jxx-1) * _zk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjy + _pas.row(jxx-1) * _yk.col(i-1)* _ppu.row(jxx-1)* _Sjz) + _Zsc.row(i+jxx-1)*_pau.row(jxx-1)*_Sjy - ((_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfy + (_v_i.row(jxx-1) * _fy).transpose() *_pau.row(jxx-1)*_Sjz) - _ggg*_VV_i.row(jxx-1)*_Sfy - _zmpy_ub*_pau.row(jxx-1)*_Sjz).transpose()) + (_j_ini * _pau.row(jxx-1) * _Sjthetax).transpose();
+		_del_i_y_up.col(jxx-1) = _mass * ((_pps.row(jxx-1) * _yk.col(i-1)).transpose() *_pas.row(jxx-1)*_zk.col(i-1) + _ggg*_pps.row(jxx-1) * _yk.col(i-1) - (_pas.row(jxx-1) * _yk.col(i-1)).transpose() *_pps.row(jxx-1)*_zk.col(i-1) + (_pas.row(jxx-1) * _yk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - (_v_i.row(jxx-1) * _fy).transpose() *_pas.row(jxx-1)*_zk.col(i-1) - _ggg *_v_i.row(jxx-1) * _fy - _zmpy_ub*_pas.row(jxx-1)*_zk.col(i-1) - _ggg *_zmpy_ub); + _j_ini * _pas.row(jxx-1) * _thetaxk.col(i-1);	      
 	      
 		// y-ZMP low boundary
 		_phi_i_y_low = _phi_i_y_up;  
-		_p_i_y_t_low.col(jxx-1) = (_p_i_y_t_up.col(jxx-1).transpose() + _mass * _zmpy_ub*_Si*_pau*_Sjz - _mass * _zmpy_lb*_Si*_pau*_Sjz).transpose();	      
-		_del_i_y_low.col(jxx-1) = _del_i_y_up.col(jxx-1) +_mass*_zmpy_ub*_Si*_pas*_zk.col(i-1)+  _mass * _ggg*_zmpy_ub - _mass*_zmpy_lb*_Si*_pas*_zk.col(i-1)-_mass * _ggg*_zmpy_lb;	      	      	     
+		_p_i_y_t_low.col(jxx-1) = (_p_i_y_t_up.col(jxx-1).transpose() + _mass * _zmpy_ub*_pau.row(jxx-1)*_Sjz - _mass * _zmpy_lb*_pau.row(jxx-1)*_Sjz).transpose();	      
+		_del_i_y_low.col(jxx-1) = _del_i_y_up.col(jxx-1) +_mass*_zmpy_ub*_pas.row(jxx-1)*_zk.col(i-1)+  _mass * _ggg*_zmpy_ub - _mass*_zmpy_lb*_pas.row(jxx-1)*_zk.col(i-1)-_mass * _ggg*_zmpy_lb;	      	      	     
 
 		
 		
 		//angle range constraints
-		_q_upx.row(jxx-1) = _Si* _ppu* _Sjthetax;
+		_q_upx.row(jxx-1) = _ppu.row(jxx-1)* _Sjthetax;
 		_q_lowx.row(jxx-1) = -_q_upx.row(jxx-1);	         
 
-		_qq1_upx.row(jxx-1) = _Si* _pps* _thetaxk.col(i-1);
+		_qq1_upx.row(jxx-1) = _pps.row(jxx-1)* _thetaxk.col(i-1);
 		_qq1_upx(jxx-1,0) = _qq1_upx(jxx-1,0)-_thetax_max;
 		
-		_q_upy.row(jxx-1) = _Si* _ppu* _Sjthetay;
+		_q_upy.row(jxx-1) = _ppu.row(jxx-1)* _Sjthetay;
 		_q_lowy.row(jxx-1) = -_q_upy.row(jxx-1);	
 		
-		_qq1_upy.row(jxx-1) = _Si* _pps* _thetayk.col(i-1);
+		_qq1_upy.row(jxx-1) = _pps.row(jxx-1)* _thetayk.col(i-1);
 		_qq1_upy(jxx-1,0) = _qq1_upy(jxx-1,0)-_thetay_max;    
 
 		//torque range constraints
-		_t_upx.row(jxx-1) = _Si* _pau* _Sjthetax;
+		_t_upx.row(jxx-1) = _pau.row(jxx-1)* _Sjthetax;
 		_t_lowx.row(jxx-1) = -_t_upx.row(jxx-1);
 		
-		_tt1_upx.row(jxx-1) = _Si* _pas* _thetaxk.col(i-1);
+		_tt1_upx.row(jxx-1) = _pas.row(jxx-1)* _thetaxk.col(i-1);
 		_tt1_upx(jxx-1,0) = _tt1_upx(jxx-1,0)-_torquex_max;
 		
-		_t_upy.row(jxx-1) = _Si* _pau* _Sjthetay;
+		_t_upy.row(jxx-1) = _pau.row(jxx-1)* _Sjthetay;
 		_t_lowy.row(jxx-1) = -_t_upy.row(jxx-1);	 
 		
-		_tt1_upy.row(jxx-1) = _Si* _pas* _thetayk.col(i-1);
+		_tt1_upy.row(jxx-1) = _pas.row(jxx-1)* _thetayk.col(i-1);
 		_tt1_upy(jxx-1,0) = _tt1_upy(jxx-1,0)-_torquey_max;		
 		
 		// body height constraints
-		_H_h_upz.row(jxx-1) = _Si* _ppu* _Sjz;
-		_H_h_lowz.row(jxx-1) = -_Si* _ppu* _Sjz;   	
-		_delta_footz_up.row(jxx-1) = _Si*_pps*_zk.col(i-1) - _comz_center_ref.row(jxx-1) ;
+		_H_h_upz.row(jxx-1) = _ppu.row(jxx-1)* _Sjz;
+		_H_h_lowz.row(jxx-1) = -_H_h_upz.row(jxx-1);   	
+		_delta_footz_up.row(jxx-1) = _pps.row(jxx-1)*_zk.col(i-1) - _comz_center_ref.row(jxx-1) ;
 		_delta_footz_up(jxx-1,0) = _delta_footz_up(jxx-1,0) - _z_max;
 		
 		// body height acceleration constraints	      
-		_H_hacc_lowz.row(jxx-1) = -_Si* _pau* _Sjz;   
-		_delta_footzacc_up.row(jxx-1) = _Si*_pas*_zk.col(i-1) + _ggg;
+		_H_hacc_lowz.row(jxx-1) = -_pau.row(jxx-1)* _Sjz;   
+		_delta_footzacc_up.row(jxx-1) = _pas.row(jxx-1)*_zk.col(i-1) + _ggg;
 	      }
 
   ///       only one-time caluation	  
@@ -972,11 +969,10 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	    _a_hx = _ppu * _Sjthetax;
 	    _a_hy = _ppu * _Sjthetay;
 	   
-	    // SEQUENCE QUADARTIC PROGRAMMING: lOOP_until the maximal loops reaches	
-	    // SEQUENCE QUADARTIC PROGRAMMING: lOOP_until the maximal loops reaches	
+	    // SEQUENCE QUADARTIC PROGRAMMING: lOOP_until the maximal loops reaches		
 	    t_start1 = clock();
     
-	  // hot start	    
+	  // calculated the control loop	    
 	    for (int xxxx=1; xxxx <= _loop; xxxx++)
 	    {	
     
@@ -1294,8 +1290,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	      estimated_state(7,0) =  _comvz(0,i-1);  
 	      estimated_state(8,0) =  _comaz(0,i-1);
 	    }	  
-	  
-	    
+	  	    
 	    if (_method_flag <=0)
 	    {
 	      estimated_state(9,0) =  _thetax(0,i-1);  
@@ -1305,10 +1300,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	      estimated_state(13,0) =  _thetavy(0,i-1);  
 	      estimated_state(14,0) =  _thetaay(0,i-1);	    
 	    }
-		
-		
-		
-		
+	
   /*	  ///////////////================state feedback: determined by ratio parameter: lamda==============================////
 	    /// model0================COMX+COMY feedback
 
@@ -1384,12 +1376,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	    _comy(0) = _comy(1);
 	    _comz(0) = _comz(1);	  
 	  }	 
-	  
-	 
-	 
-	 
-	 
-	 
+ 
       }
        else
        {
