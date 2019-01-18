@@ -236,8 +236,10 @@ private:
 	
 	// zmp constraints
 	Eigen::Matrix<double,1,_nh> _Si;
-	Eigen::Matrix<double,_Nt,_Nt> _phi_i_x_up,_phi_i_x_low,_phi_i_y_up,_phi_i_y_low;
-	Eigen::Matrix<double,_Nt,_nh> _p_i_x_t_up,_p_i_x_t_low,_p_i_y_t_up,_p_i_y_t_low;
+// 	Eigen::Matrix<double,_Nt,_Nt> _phi_i_x_up,_phi_i_x_low,_phi_i_y_up,_phi_i_y_low;
+	Eigen::Matrix<double,1,_Nt> _phi_i_x_up,_phi_i_y_up;
+// 	Eigen::Matrix<double,_Nt,_nh> _p_i_x_t_up,_p_i_x_t_low,_p_i_y_t_up,_p_i_y_t_low;	
+	Eigen::Matrix<double,_nh,_Nt> _p_i_x_t_up,_p_i_x_t_low,_p_i_y_t_up,_p_i_y_t_low;	
 	Eigen::Matrix<double,1,_nh> _del_i_x_up,_del_i_x_low,_del_i_y_up,_del_i_y_low;
 	
 	Eigen::Matrix<double,_nh,_Nt> _q_upx,_q_lowx,_q_upy,_q_lowy;

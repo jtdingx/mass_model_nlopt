@@ -460,13 +460,11 @@ void MPCClass::Initialize()
 	_phi_i_x_up.setZero();
 	_p_i_x_t_up.setZero();
 	_del_i_x_up.setZero();
-	_phi_i_x_low.setZero();
 	_p_i_x_t_low.setZero();
 	_del_i_x_low.setZero();
 	_phi_i_y_up.setZero();
 	_p_i_y_t_up.setZero();
 	_del_i_y_up.setZero();
-	_phi_i_y_low.setZero();
 	_p_i_y_t_low.setZero();
 	_del_i_y_low.setZero();	  
 
@@ -678,12 +676,12 @@ void MPCClass::Initialize()
 	
 	_pauSjz1.setZero();
 	_pauSjz1 = _zmpx_ub*_pau*_Sjz;
-	_pauSjz2.setZero();
-	_pauSjz2 = _zmpx_lb*_pau*_Sjz;	
+	_pauSjz2.setZero();   ////error ( _p_i_x_t_low -_p_i_x_t_up)   
+	_pauSjz2 = _mass*_zmpx_ub*_pau*_Sjz -_pauSjz1;	
 	_pauSjz11.setZero();
 	_pauSjz11 = _zmpy_ub*_pau*_Sjz;
-	_pauSjz21.setZero();
-	_pauSjz21 = _zmpy_lb*_pau*_Sjz;	
+	_pauSjz21.setZero(); /// error  ( _p_i_x_t_low -_p_i_x_t_up)
+	_pauSjz21 = _mass*_zmpy_lb*_pau*_Sjz - _pauSjz11;	
 	
 	
 	_pauSjthetay.setZero();
@@ -983,27 +981,19 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	      {
 		// ZMP constraints: merger the simliar item and calculated offline
 		// x-ZMP upper boundary                                      
-// 		_p_i_x_t_up.col(jxx-1) = _mass * ((  (_pps.row(jxx-1) * _xk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjz + (_pas.row(jxx-1)*_zk.col(i-1)).transpose()*_ppu.row(jxx-1)*_Sjx + _ggg*_ppu.row(jxx-1)*_Sjx - ( (_pps.row(jxx-1) * _zk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjx + _pas.row(jxx-1) * _xk.col(i-1)* _ppu.row(jxx-1)* _Sjz    ) + _Zsc.row(i+jxx-1)*_pau.row(jxx-1)*_Sjx - ((_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfx + (_v_i.row(jxx-1) * _fx).transpose() *_pau.row(jxx-1)*_Sjz) - _ggg*_VV_i.row(jxx-1)*_Sfx - _zmpx_ub*_pau.row(jxx-1)*_Sjz).transpose()) - (_j_ini * _pau.row(jxx-1) * _Sjthetay).transpose();		
-// 		_del_i_x_up.col(jxx-1) = _mass * ((_pps.row(jxx-1) * _xk.col(i-1)).transpose() *_pas.row(jxx-1)*_zk.col(i-1) + _ggg*_pps.row(jxx-1) * _xk.col(i-1) - (_pas.row(jxx-1) * _xk.col(i-1)).transpose() *_pps.row(jxx-1)*_zk.col(i-1) + (_pas.row(jxx-1) * _xk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - (_v_i.row(jxx-1) * _fx).transpose() *_pas.row(jxx-1)*_zk.col(i-1) - _ggg * _v_i.row(jxx-1) * _fx - _zmpx_ub*_pas.row(jxx-1)*_zk.col(i-1) - _ggg *_zmpx_ub) - _j_ini * _pas.row(jxx-1) * _thetayk.col(i-1);
-// 		_p_i_x_t_up.col(jxx-1) = _mass * ((  (_pps.row(jxx-1) * _xk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjz + (_pas.row(jxx-1)*_zk.col(i-1)).transpose()*_ppu.row(jxx-1)*_Sjx + _ggg*_ppu.row(jxx-1)*_Sjx - ( (_pps.row(jxx-1) * _zk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjx + _pas.row(jxx-1) * _xk.col(i-1)* _ppu.row(jxx-1)* _Sjz    ) + _Zsc.row(i+jxx-1)*_pau.row(jxx-1)*_Sjx - ( (_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfx ) - _ggg*_VV_i.row(jxx-1)*_Sfx - _zmpx_ub*_pau.row(jxx-1)*_Sjz ).transpose() ) - (_j_ini * _pau.row(jxx-1) * _Sjthetay).transpose();		
-// 		_del_i_x_up.col(jxx-1) = _mass * ((_pps.row(jxx-1) * _xk.col(i-1)).transpose() *_pas.row(jxx-1)*_zk.col(i-1) + _ggg*_pps.row(jxx-1) * _xk.col(i-1) - (_pas.row(jxx-1) * _xk.col(i-1)).transpose() *_pps.row(jxx-1)*_zk.col(i-1) + (_pas.row(jxx-1) * _xk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - _zmpx_ub*_pas.row(jxx-1)*_zk.col(i-1) - _ggg *_zmpx_ub) - _j_ini * _pas.row(jxx-1) * _thetayk.col(i-1);
-
-	        _p_i_x_t_up.col(jxx-1) = _mass * ((  (_xk.col(i-1)).transpose() * _xkZMPx_constraints[jxx-1] + (_zk.col(i-1)).transpose()*_zkZMPx_constraints[jxx-1] + _ppuSjx.row(jxx-1) + _Zsc.row(i+jxx-1)*_pauSjx.row(jxx-1) - ( (_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfx ) - _ggg*_VV_i.row(jxx-1)*_Sfx - _pauSjz1.row(jxx-1) ).transpose() ) - (_pauSjthetay.row(jxx-1)).transpose();		
+	        _p_i_x_t_up.row(jxx-1) = _mass * (  (_xk.col(i-1)).transpose() * _xkZMPx_constraints[jxx-1] + (_zk.col(i-1)).transpose()*_zkZMPx_constraints[jxx-1] + _ppuSjx.row(jxx-1) + _Zsc.row(i+jxx-1)*_pauSjx.row(jxx-1) - ( (_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfx ) - _ggg*_VV_i.row(jxx-1)*_Sfx - _pauSjz1.row(jxx-1) ) - _pauSjthetay.row(jxx-1);		
 		_del_i_x_up.col(jxx-1) = _mass * ((_xk.col(i-1)).transpose()*_xkzk_constraints[jxx-1]*_zk.col(i-1) + _ggg*_pps.row(jxx-1) * _xk.col(i-1) + (_pas.row(jxx-1) * _xk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - _zmpx_ub*_pas.row(jxx-1)*_zk.col(i-1) - _gzmpxub) - _j_ini * _pas.row(jxx-1) * _thetayk.col(i-1);
 
 		// x-ZMP low boundary
-		_p_i_x_t_low.col(jxx-1) = (_p_i_x_t_up.col(jxx-1).transpose() + _mass * (_pauSjz1.row(jxx-1) - _pauSjz2.row(jxx-1))).transpose();	      
+		_p_i_x_t_low.row(jxx-1) = _p_i_x_t_up.row(jxx-1) + _pauSjz2.row(jxx-1);	      
 		_del_i_x_low.col(jxx-1) = _del_i_x_up.col(jxx-1) +_mass*_zmpx_ub*_pas.row(jxx-1)*_zk.col(i-1)+  _mass * _gzmpxub - _mass*_zmpx_lb*_pas.row(jxx-1)*_zk.col(i-1)-_mass * _gzmpxlb;
 		
 		// y-ZMP upper boundary
-//     		_p_i_y_t_up.col(jxx-1) = _mass * (((_pps.row(jxx-1) * _yk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjz + (_pas.row(jxx-1)*_zk.col(i-1)).transpose()*_ppu.row(jxx-1)*_Sjy + _ggg*_ppu.row(jxx-1)*_Sjy - ((_pps.row(jxx-1) * _zk.col(i-1)).transpose() *_pau.row(jxx-1)*_Sjy + _pas.row(jxx-1) * _yk.col(i-1)* _ppu.row(jxx-1)* _Sjz) + _Zsc.row(i+jxx-1)*_pau.row(jxx-1)*_Sjy - ((_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfy + (_v_i.row(jxx-1) * _fy).transpose() *_pau.row(jxx-1)*_Sjz) - _ggg*_VV_i.row(jxx-1)*_Sfy - _zmpy_ub*_pau.row(jxx-1)*_Sjz).transpose()) + (_j_ini * _pau.row(jxx-1) * _Sjthetax).transpose();
-// 		_del_i_y_up.col(jxx-1) = _mass * ((_pps.row(jxx-1) * _yk.col(i-1)).transpose() *_pas.row(jxx-1)*_zk.col(i-1) + _ggg*_pps.row(jxx-1) * _yk.col(i-1) - (_pas.row(jxx-1) * _yk.col(i-1)).transpose() *_pps.row(jxx-1)*_zk.col(i-1) + (_pas.row(jxx-1) * _yk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - (_v_i.row(jxx-1) * _fy).transpose() *_pas.row(jxx-1)*_zk.col(i-1) - _ggg *_v_i.row(jxx-1) * _fy - _zmpy_ub*_pas.row(jxx-1)*_zk.col(i-1) - _ggg *_zmpy_ub); + _j_ini * _pas.row(jxx-1) * _thetaxk.col(i-1);	      
-		_p_i_y_t_up.col(jxx-1) = _mass * (( (_yk.col(i-1)).transpose() *_ykZMPy_constraints[jxx-1] + (_zk.col(i-1)).transpose()*_zkZMPy_constraints[jxx-1] + _ppuSjy.row(jxx-1) + _Zsc.row(i+jxx-1)*_pauSjy.row(jxx-1) - ((_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfy ) - _ggg*_VV_i.row(jxx-1)*_Sfy - _pauSjz11.row(jxx-1)).transpose()) + (_pauSjthetax.row(jxx-1)).transpose();
+		_p_i_y_t_up.row(jxx-1) = _mass * ( (_yk.col(i-1)).transpose() *_ykZMPy_constraints[jxx-1] + (_zk.col(i-1)).transpose()*_zkZMPy_constraints[jxx-1] + _ppuSjy.row(jxx-1) + _Zsc.row(i+jxx-1)*_pauSjy.row(jxx-1) - ((_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfy ) - _ggg*_VV_i.row(jxx-1)*_Sfy - _pauSjz11.row(jxx-1)) + _pauSjthetax.row(jxx-1);
 		_del_i_y_up.col(jxx-1) = _mass * ( (_yk.col(i-1)).transpose() *_xkzk_constraints[jxx-1]*_zk.col(i-1) + _ggg*_pps.row(jxx-1) * _yk.col(i-1) + (_pas.row(jxx-1) * _yk.col(i-1)).transpose() *_Zsc.row(i+jxx-1) - _zmpy_ub*_pas.row(jxx-1)*_zk.col(i-1) - _gzmpyub) + _j_ini * _pas.row(jxx-1) * _thetaxk.col(i-1); 	      
 	
 		// y-ZMP low boundary
-		_phi_i_y_low = _phi_i_y_up;  
-		_p_i_y_t_low.col(jxx-1) = (_p_i_y_t_up.col(jxx-1).transpose() + _mass * (_pauSjz11.row(jxx-1) - _pauSjz21.row(jxx-1))).transpose();	      
+		_p_i_y_t_low.row(jxx-1) = _p_i_y_t_up.row(jxx-1) + _pauSjz21.row(jxx-1);	      
 		_del_i_y_low.col(jxx-1) = _del_i_y_up.col(jxx-1) +_mass*_zmpy_ub*_pas.row(jxx-1)*_zk.col(i-1)+  _mass * _gzmpyub - _mass*_zmpy_lb*_pas.row(jxx-1)*_zk.col(i-1)-_mass * _gzmpylb;	      	      	     
 
 		
@@ -1091,62 +1081,54 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	      for(int jxx=1; jxx<=_nh; jxx++)
 	      {
 		// x-ZMP upper constraints
-		_phi_i_x_up = _phi_i_x_up_est[jxx-1];
-		_H_q_upx.row(jxx-1) = (2*_phi_i_x_up*_V_ini + _p_i_x_t_up.col(jxx-1)).transpose(); 
-		_F_zmp_upx.row(jxx-1) = -((_V_ini.transpose() * _phi_i_x_up + _p_i_x_t_up.col(jxx-1).transpose()) * _V_ini + _del_i_x_up.col(jxx-1)); 
+		_phi_i_x_up = _V_ini.transpose() *_phi_i_x_up_est[jxx-1];
+		_H_q_upx.row(jxx-1) = 2*_phi_i_x_up + _p_i_x_t_up.row(jxx-1); 
+		_F_zmp_upx.row(jxx-1) = -((_phi_i_x_up + _p_i_x_t_up.row(jxx-1)) * _V_ini + _del_i_x_up.col(jxx-1)); 
 
-		// x-ZMP low boundary
-		_phi_i_x_low = _phi_i_x_up;	      	      
-		_H_q_lowx.row(jxx-1) = (- _p_i_x_t_low.col(jxx-1) + _p_i_x_t_up.col(jxx-1)).transpose() - _H_q_upx.row(jxx-1);  
-		_F_zmp_lowx.row(jxx-1) = (_p_i_x_t_low.col(jxx-1)-_p_i_x_t_up.col(jxx-1)).transpose() * _V_ini + _del_i_x_low.col(jxx-1) -  _del_i_x_up.col(jxx-1)-_F_zmp_upx.row(jxx-1); 
+		// x-ZMP low boundary   	      
+		_H_q_lowx.row(jxx-1) = - _pauSjz2.row(jxx-1) - _H_q_upx.row(jxx-1);  
+		_F_zmp_lowx.row(jxx-1) = _pauSjz2.row(jxx-1) * _V_ini + _del_i_x_low.col(jxx-1) -  _del_i_x_up.col(jxx-1)-_F_zmp_upx.row(jxx-1); 
 		
 		
 		// y-ZMP upper boundary	      
-		_phi_i_y_up = _phi_i_y_up_est[jxx-1];	      
-		_H_q_upy.row(jxx-1) = (2*_phi_i_y_up*_V_ini + _p_i_y_t_up.col(jxx-1)).transpose(); 
-		_F_zmp_upy.row(jxx-1) = -((_V_ini.transpose() * _phi_i_y_up + _p_i_y_t_up.col(jxx-1).transpose()) * _V_ini + _del_i_y_up.col(jxx-1)); 
+		_phi_i_y_up = _V_ini.transpose()*_phi_i_y_up_est[jxx-1];	      
+		_H_q_upy.row(jxx-1) = 2*_phi_i_y_up + _p_i_y_t_up.row(jxx-1); 
+		_F_zmp_upy.row(jxx-1) = -((_phi_i_y_up + _p_i_y_t_up.row(jxx-1)) * _V_ini + _del_i_y_up.col(jxx-1)); 
 		
-		// y-ZMP low boundary
-		_phi_i_y_low = _phi_i_y_up;  	      	      
-		_H_q_lowy.row(jxx-1) = (- _p_i_y_t_low.col(jxx-1) + _p_i_y_t_up.col(jxx-1)).transpose() - _H_q_upy.row(jxx-1); 
-		_F_zmp_lowy.row(jxx-1) = (_p_i_y_t_low.col(jxx-1)-_p_i_y_t_up.col(jxx-1)).transpose() * _V_ini + _del_i_y_low.col(jxx-1) - _del_i_y_up.col(jxx-1)-_F_zmp_upy.row(jxx-1);      	      
+		// y-ZMP low boundary	      	      
+		_H_q_lowy.row(jxx-1) = - _pauSjz21.row(jxx-1) - _H_q_upy.row(jxx-1); 
+		_F_zmp_lowy.row(jxx-1) = _pauSjz21.row(jxx-1) * _V_ini + _del_i_y_low.col(jxx-1) - _del_i_y_up.col(jxx-1)-_F_zmp_upy.row(jxx-1);      	      
 	    
 
 		
 		//angle range constraints
 		_qq_upx.row(jxx-1) = -(_q_upx.row(jxx-1)* _V_ini + _qq1_upx.row(jxx-1));
-		_qq_lowx.row(jxx-1) = - _qq_upx.row(jxx-1);	 
-		_qq_lowx(jxx-1,0) = _thetax_max - _thetax_min + _qq_lowx(jxx-1,0);	 
+/*		_qq_lowx.row(jxx-1) = - _qq_upx.row(jxx-1);*/	 
+		_qq_lowx(jxx-1,0) = _thetax_max - _thetax_min - _qq_upx(jxx-1,0);	 
 				
 		_qq_upy.row(jxx-1) = -(_q_upy.row(jxx-1)* _V_ini + _qq1_upy.row(jxx-1));
-		_qq_lowy.row(jxx-1) = - _qq_upy.row(jxx-1);
-		_qq_lowy(jxx-1,0) = _thetay_max - _thetay_min + _qq_lowy(jxx-1,0);
+// 		_qq_lowy.row(jxx-1) = - _qq_upy.row(jxx-1);
+		_qq_lowy(jxx-1,0) = _thetay_max - _thetay_min - _qq_upy(jxx-1,0);
 
 		//torque range constraints	      
 		_tt_upx.row(jxx-1) = -(_t_upx.row(jxx-1)* _V_ini +  _tt1_upx.row(jxx-1));
-		_tt_lowx.row(jxx-1) = - _tt_upx.row(jxx-1);	
-		_tt_lowx(jxx-1,0) = _torquex_max - _torquex_min + _tt_lowx(jxx-1,0);	
+/*		_tt_lowx.row(jxx-1) = - _tt_upx.row(jxx-1);*/	
+		_tt_lowx(jxx-1,0) = _torquex_max - _torquex_min - _tt_upx(jxx-1,0);	
 		
 		_tt_upy.row(jxx-1) = -(_t_upy.row(jxx-1)* _V_ini +  _tt1_upy.row(jxx-1));
-		_tt_lowy.row(jxx-1) = - _tt_upy.row(jxx-1);		      
-		_tt_lowy(jxx-1,0) = _torquey_max - _torquey_min + _tt_lowy(jxx-1,0);	
+/*		_tt_lowy.row(jxx-1) = - _tt_upy.row(jxx-1);*/		      
+		_tt_lowy(jxx-1,0) = _torquey_max - _torquey_min - _tt_upy(jxx-1,0);	
 		
 		// body height constraints	      
 		_F_h_upz.row(jxx-1) = -(_H_h_upz.row(jxx-1)*_V_ini + _delta_footz_up.row(jxx-1));
-		_F_h_lowz.row(jxx-1) = -_F_h_upz.row(jxx-1);	      
-		_F_h_lowz(jxx-1,0) = _z_max - _z_min +_F_h_lowz(jxx-1,0);
+/*		_F_h_lowz.row(jxx-1) = -_F_h_upz.row(jxx-1);*/	      
+		_F_h_lowz(jxx-1,0) = _z_max - _z_min - _F_h_upz(jxx-1,0);
 		
 		// body height acceleration constraints	      
 		_F_hacc_lowz.row(jxx-1) = (-_H_hacc_lowz.row(jxx-1)*_V_ini + _delta_footzacc_up.row(jxx-1));	      	      
 	      }
 
-	      
-	      
-	      
-	      
-	      
-	      t_start3 = clock();
-	      
+	      t_start3 = clock();	      
 	      // foot location constraints
 	      if (_n_vis == 1)  //one next steo
 	      {
@@ -1241,9 +1223,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		  _F_foot_lowy.row(1) = (_H_q_footy_up.row(1) * _V_ini);
 		  _F_foot_lowy(1,0) = _F_foot_lowy(1,0) + _footy_max;		  
 		}	      	     	      
-	      }
-
-	      
+	      }	      
 	      //swing foot veloctiy boundary
 	      if (i ==1)
 	      {
@@ -1279,7 +1259,6 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		  _footlbyv(0,0) = _footlbyv(0,0) - _footy_vmin*_dt;		  
 		}
 	      }
-
 
 	    ///////////// equality equation	    
 	    //equality constraints
@@ -1442,11 +1421,6 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	    _zk(2,i) = (estimated_state(8,0)+2*_zk(2,i))/3;*/	
 	    
 	    
-	    
-	    
-	    
-    
-
   ////////////////===============================================================================================	  
 	  /// next two sample time:	actually the preictive value is not reliable  
 	    _comx(0,i+1) = _comx(0,i) + _dt * _comvx(0,i); 	  	  
