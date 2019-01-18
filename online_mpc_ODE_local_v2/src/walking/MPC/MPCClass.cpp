@@ -556,55 +556,21 @@ void MPCClass::Initialize()
 	_Sfoot(0) = -1;
 	_Sfoot(1) = 1;
 	  
-	// offline calulated the ZMP constraints coefficient==================================
-	  //////////initiallize vector
-	vector <Eigen::Matrix<double,_Nt, _Nt>> x_offline1(_nh)  ;
-	for (int j=0;j<_nh; j++)
-	{
-	  x_offline1[j]= Eigen::Matrix<double,_Nt, _Nt>::Zero();
-	}
-
-	ZMPx_constraints_offfline = x_offline1;
-	ZMPy_constraints_offfline = x_offline1;		
-	_phi_i_x_up_est = x_offline1;
-	_phi_i_y_up_est = x_offline1;
-	
-	vector <Eigen::Matrix<double,_nh, _Nt>> x_offline2(_nh)  ;
-	for (int j=0;j<_nh; j++)
-	{
-	  x_offline2[j]= Eigen::Matrix<double,_nh, _Nt>::Zero();
-	}	
-
-	ZMPx_constraints_half = x_offline2;	
-	ZMPy_constraints_half = x_offline2;
-		
-	for(int jxx=1; jxx<=_nh; jxx++)
-	{
-	  _Si.setZero();
-	  _Si(0,jxx-1) = 1;
-	  // ZMP constraints	      		 
-         ZMPx_constraints_offfline[jxx-1] = (_Si * _ppu * _Sjx).transpose() * _Si * _pau * _Sjz - (_Si * _pau * _Sjx).transpose() * _Si * _ppu * _Sjz;
-	 ZMPx_constraints_half[jxx-1] = - (_Si).transpose() * _Si * _pau * _Sjz;
-	  	  
-         ZMPy_constraints_offfline[jxx-1] = (_Si * _ppu * _Sjy).transpose() * _Si * _pau * _Sjz - (_Si * _pau * _Sjy).transpose() * _Si * _ppu * _Sjz;
-	 ZMPy_constraints_half[jxx-1] = - (_Si).transpose() * _Si * _pau * _Sjz;	      
-	}
         
-
+        /// global CoMx and CoMy of each loop
         _Footx_global_relative =0;
         _Footy_global_relative =0;	
 
-	// boundary initialzation	  
-	_Si.setZero();	  
 
 	_ZMPx_constraints_half2.setZero();	 
 	_ZMPy_constraints_half2.setZero();
 	_phi_i_x_up1.setZero();
 	_phi_i_y_up1.setZero();
 	
+	//// data saving
 	CoMMM_ZMP_foot.setZero();
 	
-	///QP initiallize
+	///QP size initiallize
 	if (_method_flag ==0)
 	{
 	  
@@ -640,6 +606,40 @@ void MPCClass::Initialize()
 	_pvupvs = _pvu.transpose() * _pvs;	
         _ppupps = _ppu.transpose() * _pps;
 	
+	
+	// offline calulated the ZMP constraints coefficient==================================
+	  //////////initiallize vector
+	vector <Eigen::Matrix<double,_Nt, _Nt>> x_offline1(_nh)  ;
+	for (int j=0;j<_nh; j++)
+	{
+	  x_offline1[j]= Eigen::Matrix<double,_Nt, _Nt>::Zero();
+	}
+
+	ZMPx_constraints_offfline = x_offline1;
+	ZMPy_constraints_offfline = x_offline1;		
+	_phi_i_x_up_est = x_offline1;
+	_phi_i_y_up_est = x_offline1;
+	
+	vector <Eigen::Matrix<double,_nh, _Nt>> x_offline2(_nh)  ;
+	for (int j=0;j<_nh; j++)
+	{
+	  x_offline2[j]= Eigen::Matrix<double,_nh, _Nt>::Zero();
+	}	
+
+	ZMPx_constraints_half = x_offline2;	
+	ZMPy_constraints_half = x_offline2;
+		
+	for(int jxx=1; jxx<=_nh; jxx++)
+	{
+	  _Si.setZero();
+	  _Si(0,jxx-1) = 1;
+	  // ZMP constraints	      		 
+         ZMPx_constraints_offfline[jxx-1] = (_Si * _ppu * _Sjx).transpose() * _Si * _pau * _Sjz - (_Si * _pau * _Sjx).transpose() * _Si * _ppu * _Sjz;
+	 ZMPx_constraints_half[jxx-1] = - (_Si).transpose() * _Si * _pau * _Sjz;
+	  	  
+         ZMPy_constraints_offfline[jxx-1] = (_Si * _ppu * _Sjy).transpose() * _Si * _pau * _Sjz - (_Si * _pau * _Sjy).transpose() * _Si * _ppu * _Sjz;
+	 ZMPy_constraints_half[jxx-1] = - (_Si).transpose() * _Si * _pau * _Sjz;	      
+	}	
 
 
 	vector <Eigen::Matrix<double,3, _Nt>> xx_offline1(_nh)  ;
@@ -710,6 +710,34 @@ void MPCClass::Initialize()
 	_gzmpylb = _ggg *_zmpy_lb;		
 	
       
+	
+	//angle range constraints: 1 order coefficient
+	_q_upx = _ppu* _Sjthetax;
+	_q_lowx = -_q_upx;	         
+
+	_q_upy = _Sjthetay;
+	_q_lowy = -_q_upy;	
+	//torque range constraints
+	_t_upx = _pau* _Sjthetax;
+	_t_lowx = -_t_upx;
+	
+	_t_upy = _pau* _Sjthetay;
+	_t_lowy = -_t_upy;	 		
+	// body height constraints
+	_H_h_upz = _ppu* _Sjz;
+	_H_h_lowz = -_H_h_upz;   	
+	
+	// body height acceleration constraints	      
+	_H_hacc_lowz = -_pau* _Sjz;   
+
+	//equality constraints: footz height constraints:
+/*	_H_q_footz = _Sfz.row(0);*/	    
+	_h_h = _ppu * _Sjz;
+	
+	_a_hx = _ppu * _Sjthetax;
+	_a_hy = _ppu * _Sjthetay;	
+    
+    
      
 	
 	
@@ -981,39 +1009,39 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		
 		
 		//angle range constraints
-		_q_upx.row(jxx-1) = _ppu.row(jxx-1)* _Sjthetax;
-		_q_lowx.row(jxx-1) = -_q_upx.row(jxx-1);	         
-
+/*		_q_upx.row(jxx-1) = _ppu.row(jxx-1)* _Sjthetax;
+		_q_lowx.row(jxx-1) = -_q_upx.row(jxx-1);*/	         
+                ////// attention : don't forger to test on the robot pC: if  _qq1_upx = _pps* _thetaxk.col(i-1) can run in the real time!!!!!!
 		_qq1_upx.row(jxx-1) = _pps.row(jxx-1)* _thetaxk.col(i-1);
 		_qq1_upx(jxx-1,0) = _qq1_upx(jxx-1,0)-_thetax_max;
 		
-		_q_upy.row(jxx-1) = _ppu.row(jxx-1)* _Sjthetay;
-		_q_lowy.row(jxx-1) = -_q_upy.row(jxx-1);	
+/*		_q_upy.row(jxx-1) = _ppu.row(jxx-1)* _Sjthetay;
+		_q_lowy.row(jxx-1) = -_q_upy.row(jxx-1);*/	
 		
 		_qq1_upy.row(jxx-1) = _pps.row(jxx-1)* _thetayk.col(i-1);
 		_qq1_upy(jxx-1,0) = _qq1_upy(jxx-1,0)-_thetay_max;    
 
 		//torque range constraints
-		_t_upx.row(jxx-1) = _pau.row(jxx-1)* _Sjthetax;
-		_t_lowx.row(jxx-1) = -_t_upx.row(jxx-1);
+// 		_t_upx.row(jxx-1) = _pau.row(jxx-1)* _Sjthetax;
+// 		_t_lowx.row(jxx-1) = -_t_upx.row(jxx-1);
 		
 		_tt1_upx.row(jxx-1) = _pas.row(jxx-1)* _thetaxk.col(i-1);
 		_tt1_upx(jxx-1,0) = _tt1_upx(jxx-1,0)-_torquex_max;
 		
-		_t_upy.row(jxx-1) = _pau.row(jxx-1)* _Sjthetay;
-		_t_lowy.row(jxx-1) = -_t_upy.row(jxx-1);	 
+/*		_t_upy.row(jxx-1) = _pau.row(jxx-1)* _Sjthetay;
+		_t_lowy.row(jxx-1) = -_t_upy.row(jxx-1);*/	 
 		
 		_tt1_upy.row(jxx-1) = _pas.row(jxx-1)* _thetayk.col(i-1);
 		_tt1_upy(jxx-1,0) = _tt1_upy(jxx-1,0)-_torquey_max;		
 		
 		// body height constraints
-		_H_h_upz.row(jxx-1) = _ppu.row(jxx-1)* _Sjz;
-		_H_h_lowz.row(jxx-1) = -_H_h_upz.row(jxx-1);   	
+/*		_H_h_upz.row(jxx-1) = _ppu.row(jxx-1)* _Sjz;
+		_H_h_lowz.row(jxx-1) = -_H_h_upz.row(jxx-1);*/   	
 		_delta_footz_up.row(jxx-1) = _pps.row(jxx-1)*_zk.col(i-1) - _comz_center_ref.row(jxx-1) ;
 		_delta_footz_up(jxx-1,0) = _delta_footz_up(jxx-1,0) - _z_max;
 		
 		// body height acceleration constraints	      
-		_H_hacc_lowz.row(jxx-1) = -_pau.row(jxx-1)* _Sjz;   
+// 		_H_hacc_lowz.row(jxx-1) = -_pau.row(jxx-1)* _Sjz;   
 		_delta_footzacc_up.row(jxx-1) = _pas.row(jxx-1)*_zk.col(i-1) + _ggg;
 	      }
 
@@ -1038,13 +1066,13 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	    _Footvx_min = -_Sfx.row(0);
 	    _Footvy_max = _Sfy.row(0);
 	    _Footvy_min = -_Sfy.row(0);	  		    
-	    ///////////// equality equation	    
+	    
 	    //equality constraints: footz height constraints:
 	    _H_q_footz = _Sfz.row(0);	    
-	    _h_h = _ppu * _Sjz;
-	    
-	    _a_hx = _ppu * _Sjthetax;
-	    _a_hy = _ppu * _Sjthetay;
+// 	    _h_h = _ppu * _Sjz;
+// 	    
+// 	    _a_hx = _ppu * _Sjthetax;
+// 	    _a_hy = _ppu * _Sjthetay;
 	   
 	    // SEQUENCE QUADARTIC PROGRAMMING: lOOP_until the maximal loops reaches		
 	    t_start1 = clock();
@@ -1062,7 +1090,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	      
 	      for(int jxx=1; jxx<=_nh; jxx++)
 	      {
-		// ZMP constraints
+		// x-ZMP upper constraints
 		_phi_i_x_up = _phi_i_x_up_est[jxx-1];
 		_H_q_upx.row(jxx-1) = (2*_phi_i_x_up*_V_ini + _p_i_x_t_up.col(jxx-1)).transpose(); 
 		_F_zmp_upx.row(jxx-1) = -((_V_ini.transpose() * _phi_i_x_up + _p_i_x_t_up.col(jxx-1).transpose()) * _V_ini + _del_i_x_up.col(jxx-1)); 
