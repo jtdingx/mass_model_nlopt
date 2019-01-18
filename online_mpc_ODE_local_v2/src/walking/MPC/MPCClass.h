@@ -157,24 +157,24 @@ private:
 	
 	
 	//vertical height constraints
-	double _z_max, _z_min;	
+	double _z_max, _z_min, _detzb;	
 	
 	// foot step and width constraints
-	double _footx_max, _footx_min,_footy_max,_footy_min;
+	double _footx_max, _footx_min,_footy_max,_footy_min, _detfootx,_detfooty;
 	
 	double _mass,  _rad,  _j_ini;
 	
 	// zmp-constraints
-	double _zmpx_ub,_zmpx_lb, _zmpy_ub, _zmpy_lb;
+	double _zmpx_ub,_zmpx_lb, _zmpy_ub, _zmpy_lb, _detzmppxb, _detzmppyb;
 
 	// angle range
-	double _thetax_max,  _thetax_min,  _thetay_max, _thetay_min;	
+	double _thetax_max,  _thetax_min,  _thetay_max, _thetay_min, _detthetax,_detthetay;	
 	
 	// torque range
-	double _torquex_max, _torquex_min, _torquey_max, _torquey_min; 
+	double _torquex_max, _torquex_min, _torquey_max, _torquey_min, _dettorquex,_dettorquey; 
 	
 	// swing foot velocity constraints
-	double _footx_vmax, _footx_vmin,_footy_vmax,_footy_vmin;
+	double _footx_vmax, _footx_vmin,_footy_vmax,_footy_vmin,_detfootvx,_detfootvy;
 
 
         double _fx, _fy;
@@ -203,10 +203,6 @@ private:
 	
 	// time cost consumption
 	Eigen::RowVectorXd _tcpu;
-	Eigen::RowVectorXd _tcpu_iterative;
-	Eigen::RowVectorXd _tcpu_prepara;
-	Eigen::RowVectorXd _tcpu_prepara2;
-	Eigen::RowVectorXd _tcpu_qp;	
 // predictive model control_tracking with time_varying height		
 	int _loop;
 	

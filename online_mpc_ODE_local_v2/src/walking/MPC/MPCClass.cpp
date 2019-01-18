@@ -370,10 +370,7 @@ void MPCClass::Initialize()
 	{DPRINTF("Errorrrrrrrr for IK\n");}
 	// time cost consumption======================mark
 	_tcpu.setZero(_nsum);
-	_tcpu_iterative.setZero(_nsum);
-	_tcpu_prepara.setZero(_nsum);
-	_tcpu_prepara2.setZero(_nsum);
-	_tcpu_qp.setZero(_nsum);
+
 	///////////////////=====================================//////////////////////////
 	/// for offline calculation	
 	_loop = 2;   /// loop number for SQP
@@ -677,7 +674,7 @@ void MPCClass::Initialize()
 	_pauSjz1.setZero();
 	_pauSjz1 = _zmpx_ub*_pau*_Sjz;
 	_pauSjz2.setZero();   ////error ( _p_i_x_t_low -_p_i_x_t_up)   
-	_pauSjz2 = _mass*_zmpx_ub*_pau*_Sjz -_pauSjz1;	
+	_pauSjz2 = _mass*_zmpx_lb*_pau*_Sjz -_pauSjz1;	
 	_pauSjz11.setZero();
 	_pauSjz11 = _zmpy_ub*_pau*_Sjz;
 	_pauSjz21.setZero(); /// error  ( _p_i_x_t_low -_p_i_x_t_up)
@@ -736,10 +733,17 @@ void MPCClass::Initialize()
 	_a_hy = _ppu * _Sjthetay;	
     
     
-     
-	
-	
-	
+        _detzmppxb = _zmpx_ub- _zmpx_lb;
+	_detzmppyb = _zmpy_ub- _zmpy_lb;
+	_detthetax = _thetax_max-_thetax_min;
+	_detthetay = _thetay_max-_thetay_min;
+	_detfootx  = _footx_max - _footx_min; 
+	_detfooty  = _footy_max - _footy_min; 
+	_detfootvx = _footx_vmax - _footx_vmin;
+	_detfootvy = _footy_vmax - _footy_vmin;
+	_dettorquex = _torquex_max - _torquex_min;
+	_dettorquey = _torquey_max - _torquey_min;
+	_detzb = _z_max - _z_min;
 	
 }
 
@@ -757,7 +761,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	  }
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
   // 	================ iterative calulcation: predictive control_tracking with time-varying height+angular momentum	  
-	    clock_t t_start,t_start1, t_start2, t_start3, t_start4,t_finish,t_finish1;	  	    
+	    clock_t t_start,t_finish;	  	    
 	    /// run once
 	    ///////////////////////////////////////////////////////
 	    ////////////////////////////////////// time_clock0////////////////////////
@@ -986,7 +990,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 
 		// x-ZMP low boundary
 		_p_i_x_t_low.row(jxx-1) = _p_i_x_t_up.row(jxx-1) + _pauSjz2.row(jxx-1);	      
-		_del_i_x_low.col(jxx-1) = _del_i_x_up.col(jxx-1) +_mass*_zmpx_ub*_pas.row(jxx-1)*_zk.col(i-1)+  _mass * _gzmpxub - _mass*_zmpx_lb*_pas.row(jxx-1)*_zk.col(i-1)-_mass * _gzmpxlb;
+		_del_i_x_low.col(jxx-1) = _del_i_x_up.col(jxx-1) +_mass*(_detzmppxb*_pas.row(jxx-1)*_zk.col(i-1)+  _gzmpxub- _gzmpxlb);
 		
 		// y-ZMP upper boundary
 		_p_i_y_t_up.row(jxx-1) = _mass * ( (_yk.col(i-1)).transpose() *_ykZMPy_constraints[jxx-1] + (_zk.col(i-1)).transpose()*_zkZMPy_constraints[jxx-1] + _ppuSjy.row(jxx-1) + _Zsc.row(i+jxx-1)*_pauSjy.row(jxx-1) - ((_pas.row(jxx-1) * _zk.col(i-1)).transpose() *_VV_i.row(jxx-1)*_Sfy ) - _ggg*_VV_i.row(jxx-1)*_Sfy - _pauSjz11.row(jxx-1)) + _pauSjthetax.row(jxx-1);
@@ -994,7 +998,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	
 		// y-ZMP low boundary
 		_p_i_y_t_low.row(jxx-1) = _p_i_y_t_up.row(jxx-1) + _pauSjz21.row(jxx-1);	      
-		_del_i_y_low.col(jxx-1) = _del_i_y_up.col(jxx-1) +_mass*_zmpy_ub*_pas.row(jxx-1)*_zk.col(i-1)+  _mass * _gzmpyub - _mass*_zmpy_lb*_pas.row(jxx-1)*_zk.col(i-1)-_mass * _gzmpylb;	      	      	     
+		_del_i_y_low.col(jxx-1) = _del_i_y_up.col(jxx-1) +_mass*(_detzmppyb*_pas.row(jxx-1)*_zk.col(i-1)+  _gzmpyub -_gzmpylb);	      	      	     
 
 		
 		
@@ -1065,16 +1069,12 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 // 	    _a_hy = _ppu * _Sjthetay;
 	   
 	    // SEQUENCE QUADARTIC PROGRAMMING: lOOP_until the maximal loops reaches		
-	    t_start1 = clock();
-    
 	  // calculated the control loop	    
 	    for (int xxxx=1; xxxx <= _loop; xxxx++)
 	    {	
               /// attention: V_ini would be updated in each loop.
 	      _q_goal1 = _Q_goal1 * _V_ini + _q_goal;	  
 		      
-  ///////////// inequality equation   
-	      t_start2 = clock();
 	      
 	      /// time consuming process	    
 	      
@@ -1104,31 +1104,30 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		//angle range constraints
 		_qq_upx.row(jxx-1) = -(_q_upx.row(jxx-1)* _V_ini + _qq1_upx.row(jxx-1));
 /*		_qq_lowx.row(jxx-1) = - _qq_upx.row(jxx-1);*/	 
-		_qq_lowx(jxx-1,0) = _thetax_max - _thetax_min - _qq_upx(jxx-1,0);	 
+		_qq_lowx(jxx-1,0) = _detthetax - _qq_upx(jxx-1,0);	 
 				
 		_qq_upy.row(jxx-1) = -(_q_upy.row(jxx-1)* _V_ini + _qq1_upy.row(jxx-1));
 // 		_qq_lowy.row(jxx-1) = - _qq_upy.row(jxx-1);
-		_qq_lowy(jxx-1,0) = _thetay_max - _thetay_min - _qq_upy(jxx-1,0);
+		_qq_lowy(jxx-1,0) = _detthetay - _qq_upy(jxx-1,0);
 
 		//torque range constraints	      
 		_tt_upx.row(jxx-1) = -(_t_upx.row(jxx-1)* _V_ini +  _tt1_upx.row(jxx-1));
 /*		_tt_lowx.row(jxx-1) = - _tt_upx.row(jxx-1);*/	
-		_tt_lowx(jxx-1,0) = _torquex_max - _torquex_min - _tt_upx(jxx-1,0);	
+		_tt_lowx(jxx-1,0) = _dettorquex - _tt_upx(jxx-1,0);	
 		
 		_tt_upy.row(jxx-1) = -(_t_upy.row(jxx-1)* _V_ini +  _tt1_upy.row(jxx-1));
 /*		_tt_lowy.row(jxx-1) = - _tt_upy.row(jxx-1);*/		      
-		_tt_lowy(jxx-1,0) = _torquey_max - _torquey_min - _tt_upy(jxx-1,0);	
+		_tt_lowy(jxx-1,0) = _dettorquey - _tt_upy(jxx-1,0);	
 		
 		// body height constraints	      
 		_F_h_upz.row(jxx-1) = -(_H_h_upz.row(jxx-1)*_V_ini + _delta_footz_up.row(jxx-1));
 /*		_F_h_lowz.row(jxx-1) = -_F_h_upz.row(jxx-1);*/	      
-		_F_h_lowz(jxx-1,0) = _z_max - _z_min - _F_h_upz(jxx-1,0);
+		_F_h_lowz(jxx-1,0) = _detzb - _F_h_upz(jxx-1,0);
 		
 		// body height acceleration constraints	      
 		_F_hacc_lowz.row(jxx-1) = (-_H_hacc_lowz.row(jxx-1)*_V_ini + _delta_footzacc_up.row(jxx-1));	      	      
 	      }
-
-	      t_start3 = clock();	      
+	      
 	      // foot location constraints
 	      if (_n_vis == 1)  //one next steo
 	      {
@@ -1137,8 +1136,8 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		_F_foot_upx(0,0) = _F_foot_upx(0,0) +_fx + _footx_max; 
 		
 		_H_q_footx_low.row(0) = -_Sfx.row(0);
-		_F_foot_lowx.row(0) = (_H_q_footx_up.row(0) * _V_ini);
-		_F_foot_lowx(0,0) = _F_foot_lowx(0,0)-_fx- _footx_min;
+// 		_F_foot_lowx.row(0) = (_H_q_footx_up.row(0) * _V_ini);
+		_F_foot_lowx(0,0) = -_F_foot_upx(0,0)+_detfootx;
 		
 		
 		// footy location constraints
@@ -1149,8 +1148,8 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		  _F_foot_upy(0,0) = _F_foot_upy(0,0)+_fy - _footy_min; 
 		  
 		  _H_q_footy_low.row(0) = -_Sfy.row(0);
-		  _F_foot_lowy.row(0) = (_H_q_footy_up.row(0) * _V_ini);	
-		  _F_foot_lowy(0,0) = _F_foot_lowy(0,0) -_fy + _footy_max;	
+/*		  _F_foot_lowy.row(0) = (_H_q_footy_up.row(0) * _V_ini);*/	
+		  _F_foot_lowy(0,0) = -_F_foot_upy(0,0) +_detfooty;	
 		}
 		else
 		{
@@ -1158,11 +1157,9 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		  _F_foot_upy.row(0) = -(_H_q_footy_up.row(0) * _V_ini); 
 		  _F_foot_upy(0,0) = _F_foot_upy(0,0)+_fy + _footy_max; 
 		  _H_q_footy_low.row(0) = -_Sfy.row(0);
-		  _F_foot_lowy.row(0) = (_H_q_footy_up.row(0) * _V_ini );
-		  _F_foot_lowy(0,0) = _F_foot_lowy(0,0)-_fy - _footy_min;
+// 		  _F_foot_lowy.row(0) = (_H_q_footy_up.row(0) * _V_ini );
+		  _F_foot_lowy(0,0) = -_F_foot_upy(0,0)+ _detfooty;
 		}	 
-		
-		
 	      }
 	      else   //two next steps
 	      {
@@ -1170,8 +1167,8 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		_F_foot_upx.row(0) = -(_H_q_footx_up.row(0) * _V_ini); 
 		_F_foot_upx(0,0) = _F_foot_upx(0,0) +_fx + _footx_max;
 		_H_q_footx_low.row(0) = -_Sfx.row(0);
-		_F_foot_lowx.row(0) = (_H_q_footx_up.row(0) * _V_ini);
-		_F_foot_lowx(0,0) = _F_foot_lowx(0,0)-_fx - _footx_min;
+// 		_F_foot_lowx.row(0) = (_H_q_footx_up.row(0) * _V_ini);
+		_F_foot_lowx(0,0) = -_F_foot_upx(0,0)+ _detfootx;
 		
 		// footy location constraints
 		if (_bjxx % 2 == 0) //odd
@@ -1180,8 +1177,8 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		  _F_foot_upy.row(0) = -(_H_q_footy_up.row(0) * _V_ini); 
 		  _F_foot_upy(0,0) = _F_foot_upy(0,0)+_fy - _footy_min;
 		  _H_q_footy_low.row(0) = -_Sfy.row(0);
-		  _F_foot_lowy.row(0) = (_H_q_footy_up.row(0) * _V_ini);
-		  _F_foot_lowy(0,0) = _F_foot_lowy(0,0)-_fy + _footy_max;
+// 		  _F_foot_lowy.row(0) = (_H_q_footy_up.row(0) * _V_ini);
+		  _F_foot_lowy(0,0) = -_F_foot_upy(0,0)+_detfooty;
 		}
 		else
 		{
@@ -1189,8 +1186,8 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		  _F_foot_upy.row(0) = -(_H_q_footy_up.row(0) * _V_ini); 
 		  _F_foot_upy(0,0) = _F_foot_upy(0,0)+_fy + _footy_max;
 		  _H_q_footy_low.row(0) = -_Sfy.row(0);
-		  _F_foot_lowy.row(0) = (_H_q_footy_up.row(0) * _V_ini);
-		  _F_foot_lowy(0,0) = _F_foot_lowy(0,0)-_fy - _footy_min;
+// 		  _F_foot_lowy.row(0) = (_H_q_footy_up.row(0) * _V_ini);
+		  _F_foot_lowy(0,0) = -_F_foot_upy(0,0)+ _detfooty;
 		}
 		
 		// the next two steps 
@@ -1199,8 +1196,8 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		_F_foot_upx(1,0) = _F_foot_upx(1,0) +_footx_max; 
 		
 		_H_q_footx_low.row(1) = -_Sfoot* _Sfx;
-		_F_foot_lowx.row(1) = (_H_q_footx_up.row(1) * _V_ini);
-		_F_foot_lowx(1,0) = (_F_foot_lowx(1,0) - _footx_min);
+/*		_F_foot_lowx.row(1) = (_H_q_footx_up.row(1) * _V_ini)*/;
+		_F_foot_lowx(1,0) = -_F_foot_upx(1,0)+_detfootx;
 		
 		// footy location constraints
 		if (_bjxx % 2 == 0) //odd
@@ -1210,8 +1207,8 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		  _F_foot_upy(1,0) = _F_foot_upy(1,0) + _footy_max; 
 		  
 		  _H_q_footy_low.row(1) = -_H_q_footy_up.row(1);
-		  _F_foot_lowy.row(1) = (_H_q_footy_up.row(1) * _V_ini);
-		  _F_foot_lowy(1,0) = _F_foot_lowy(1,0) - _footy_min;		  
+// 		  _F_foot_lowy.row(1) = (_H_q_footy_up.row(1) * _V_ini);
+		  _F_foot_lowy(1,0) = -_F_foot_upy(1,0)+_detfooty;		  
 		}
 		else
 		{
@@ -1220,24 +1217,25 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		  _F_foot_upy(1,0) = _F_foot_upy(1,0) - _footy_min; 
 		  
 		  _H_q_footy_low.row(1) = -_H_q_footy_up.row(1);
-		  _F_foot_lowy.row(1) = (_H_q_footy_up.row(1) * _V_ini);
-		  _F_foot_lowy(1,0) = _F_foot_lowy(1,0) + _footy_max;		  
+// 		  _F_foot_lowy.row(1) = (_H_q_footy_up.row(1) * _V_ini);
+		  _F_foot_lowy(1,0) = -_F_foot_upy(1,0)+_detfooty;		  
 		}	      	     	      
 	      }	      
+	      
 	      //swing foot veloctiy boundary
 	      if (i ==1)
 	      {
 		_footubxv = -(_Sfx.row(0) * _V_ini - _footx_real_next.row(i+_nT-2));
 		_footubxv(0,0) = _footubxv(0,0)  + _footx_max;
 		
-		_footlbxv = (_Sfx.row(0) * _V_ini - _footx_real_next.row(i+_nT-2));
-		_footlbxv(0,0) = _footlbxv(0,0) - _footx_min;		
+// 		_footlbxv = (_Sfx.row(0) * _V_ini - _footx_real_next.row(i+_nT-2));
+		_footlbxv(0,0) = -_footubxv(0,0)+ _detfootx;		
 		
 		_footubyv = -(_Sfy.row(0) * _V_ini - _footy_real_next.row(i+_nT-2));
 		_footubyv(0,0) = _footubyv(0,0) +_footy_max;		
 		
-		_footlbyv = (_Sfy.row(0) * _V_ini - _footy_real_next.row(i+_nT-2));
-		_footlbyv(0,0) = _footlbyv(0,0) - _footy_min;		
+// 		_footlbyv = (_Sfy.row(0) * _V_ini - _footy_real_next.row(i+_nT-2));
+		_footlbyv(0,0) = -_footubyv(0,0)+_detfooty;		
 		
 	      }
 	      else
@@ -1251,12 +1249,12 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		{
 		  _footubxv = -(_Sfx.row(0) * _V_ini - _footx_real_next.row(i+_nT-2));
 		  _footubxv(0,0) = _footubxv(0,0) + _footx_vmax*_dt;
-		  _footlbxv = (_Sfx.row(0) * _V_ini - _footx_real_next.row(i+_nT-2));
-		  _footlbxv(0,0) = _footlbxv(0,0) - _footx_vmin*_dt;		  
+// 		  _footlbxv = (_Sfx.row(0) * _V_ini - _footx_real_next.row(i+_nT-2));
+		  _footlbxv(0,0) = -_footubxv(0,0) +_detfootvx*_dt;		  
 		  _footubyv = -(_Sfy.row(0) * _V_ini - _footy_real_next.row(i+_nT-2));
 		  _footubyv(0,0) = _footubyv(0,0) + _footy_vmax*_dt;		  
-		  _footlbyv = (_Sfy.row(0) * _V_ini - _footy_real_next.row(i+_nT-2));	
-		  _footlbyv(0,0) = _footlbyv(0,0) - _footy_vmin*_dt;		  
+// 		  _footlbyv = (_Sfy.row(0) * _V_ini - _footy_real_next.row(i+_nT-2));	
+		  _footlbyv(0,0) = -_footubyv(0,0)+_detfootvy*_dt;		  
 		}
 	      }
 
@@ -1269,7 +1267,6 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	    _a_hyy = _a_hy * _V_ini + _pps * _thetayk.col(i-1);		    	      
   //////////////////////////////===========////////////////////////////////////////////////////	    
   // 	    // quadratic program GetSolution
-	      t_start4 = clock();
 	      
 	      if (_method_flag ==0)
 	      {
@@ -1287,17 +1284,8 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		}
 	      }
 
-	      
-	      t_finish1 = clock();
-	      _tcpu_prepara(0,i-1) = (double)(t_finish1 - t_start2)/CLOCKS_PER_SEC ;
-    
-	      _tcpu_prepara2(0,i-1) = (double)(t_finish1 - t_start3)/CLOCKS_PER_SEC ;
-	      _tcpu_qp(0,i-1) = (double)(t_finish1 - t_start4)/CLOCKS_PER_SEC ;	    
 	    }
 
-	    
-	    
-	    t_finish = clock();	  
   /////////////////////////////////////////////////////////
   /////////===================================================%%%%%	  
 	  // results postprocessed:	  
@@ -1436,9 +1424,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	    _zmpx_real(0,i) = _comx(0,i) - (_comz(0,i) - _Zsc(i))/(_comaz(0,i)+_ggg(0))*_comax(0,i) - _j_ini * _thetavy(0,i)/(_mass * (_ggg(0) + _comaz(0,i)));
 	    _zmpy_real(0,i) = _comy(0,i) - (_comz(0,i) - _Zsc(i))/(_comaz(0,i)+_ggg(0))*_comay(0,i) + _j_ini * _thetavx(0,i)/(_mass * (_ggg(0) + _comaz(0,i)));
 	    
-	    t_finish = clock();
-	    _tcpu(0,i-1) = (double)(t_finish - t_start)/CLOCKS_PER_SEC ;
-	    _tcpu_iterative(0,i-1) = (double)(t_finish - t_start1)/CLOCKS_PER_SEC ;
+
 	    
 	    _footxyz_real.row(0) = _footx_real.transpose();
 	    _footxyz_real.row(1) = _footy_real.transpose();	  
@@ -1455,6 +1441,10 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	    _comy(0) = _comy(1);
 	    _comz(0) = _comz(1);	  
 	  }	 
+ 
+	    t_finish = clock();
+	    _tcpu(0,i-1) = (double)(t_finish - t_start)/CLOCKS_PER_SEC ; 
+ 
  
       }
        else
@@ -1736,16 +1726,7 @@ void MPCClass::File_wl()
 	
   
 	std::string fileName = "C++_NMPC2018_3robut3_runtime.txt" ;
-	std::ofstream outfile( fileName.c_str() ) ; // file name and the operation type. 
-       
-        for(int i=0; i<_tcpu.rows(); i++){
-           for(int j=0; j<_tcpu.cols(); j++){
-                 outfile << (double) _tcpu(i,j) << " " ; 
-           }
-           outfile << std::endl;       // a   newline
-        }
-        outfile.close();
-	
+	std::ofstream outfile( fileName.c_str() ) ; // file name and the operation type. 	
         for(int i=0; i<_tcpu.rows(); i++){
            for(int j=0; j<_tcpu.cols(); j++){
                  outfile << (double) _tcpu(i,j) << " " ; 
