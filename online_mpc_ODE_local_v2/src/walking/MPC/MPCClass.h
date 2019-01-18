@@ -306,15 +306,19 @@ private:
 	Eigen::Matrix<double, _nh, 3> _pvupvs, _ppupps;
 	
 	
-	vector <Eigen::Matrix<double,3, _Nt>> _xkZMPx_constraints;
-	vector <Eigen::Matrix<double,3, _Nt>> _zkZMPx_constraints;
+	vector <Eigen::Matrix<double,3, _Nt>> _xkZMPx_constraints,_ykZMPy_constraints;
+	vector <Eigen::Matrix<double,3, _Nt>> _zkZMPx_constraints,_zkZMPy_constraints;
 	
-	Eigen::Matrix<double, _nh, _Nt> _ppuSjx;
-	Eigen::Matrix<double, _nh, _Nt> _pauSjx;	
-	Eigen::Matrix<double, _nh, _Nt> _pauSjz1,_pauSjz2;	
-	Eigen::Matrix<double, _nh, _Nt> _pauSjthetay;
+	Eigen::Matrix<double, _nh, _Nt> _ppuSjx, _ppuSjy;
+	Eigen::Matrix<double, _nh, _Nt> _pauSjx, _pauSjy;	
+	Eigen::Matrix<double, _nh, _Nt> _pauSjz1,_pauSjz2,_pauSjz11,_pauSjz21;	
+	Eigen::Matrix<double, _nh, _Nt> _pauSjthetay,_pauSjthetax;
 	
 	vector <Eigen::Matrix3d> _xkzk_constraints;	
-	Eigen::Matrix<double, 1, 1> _gzmpxub,_gzmpxlb;
+	Eigen::Matrix<double, 1, 1> _gzmpxub,_gzmpxlb,_gzmpyub,_gzmpylb;
+	
+	
+	
+	
 
 };
