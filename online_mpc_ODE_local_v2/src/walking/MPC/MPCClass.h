@@ -236,7 +236,7 @@ private:
 	Eigen::Matrix<double,1,_Nt> _phi_i_x_up,_phi_i_y_up;
 // 	Eigen::Matrix<double,_Nt,_nh> _p_i_x_t_up,_p_i_x_t_low,_p_i_y_t_up,_p_i_y_t_low;	
 	Eigen::Matrix<double,_nh,_Nt> _p_i_x_t_up,_p_i_x_t_low,_p_i_y_t_up,_p_i_y_t_low;	
-	Eigen::Matrix<double,1,_nh> _del_i_x_up,_del_i_x_low,_del_i_y_up,_del_i_y_low;
+	Eigen::Matrix<double,1,_nh> _del_i_x_up,_del_i_x_low,_del_i_y_up,_del_i_y_low, _det_del_i_x,_det_del_i_y;
 	
 	Eigen::Matrix<double,_nh,_Nt> _q_upx,_q_lowx,_q_upy,_q_lowy;
 	Eigen::Matrix<double,_nh,1> _qq_upx,_qq_lowx,_qq_upy,_qq_lowy,_qq1_upx,_qq1_lowx,_qq1_upy,_qq1_lowy;

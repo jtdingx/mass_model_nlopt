@@ -463,7 +463,10 @@ void MPCClass::Initialize()
 	_p_i_y_t_up.setZero();
 	_del_i_y_up.setZero();
 	_p_i_y_t_low.setZero();
-	_del_i_y_low.setZero();	  
+	_del_i_y_low.setZero();	
+	_det_del_i_x.setZero();
+	_det_del_i_y.setZero();
+	
 
 	// angle boundary preparation
 	_q_upx.setZero();
@@ -758,6 +761,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 	  if (i==(round(2*_ts(1)/_dt))+1) ///update the footy_limit
 	  {
 	      _footy_min = RobotParaClass::FOOT_WIDTH()+0.01;
+	      _detfooty  = _footy_max - _footy_min; 
 	  }
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////	
   // 	================ iterative calulcation: predictive control_tracking with time-varying height+angular momentum	  
@@ -1069,7 +1073,11 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 // 	    _a_hy = _ppu * _Sjthetay;
 	   
 	    // SEQUENCE QUADARTIC PROGRAMMING: lOOP_until the maximal loops reaches		
-	  // calculated the control loop	    
+	  // calculated the control loop
+
+            _det_del_i_x = _del_i_x_low -  _del_i_x_up;
+	    _det_del_i_y = _del_i_y_low -  _del_i_y_up;
+	    
 	    for (int xxxx=1; xxxx <= _loop; xxxx++)
 	    {	
               /// attention: V_ini would be updated in each loop.
@@ -1087,7 +1095,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 
 		// x-ZMP low boundary   	      
 		_H_q_lowx.row(jxx-1) = - _pauSjz2.row(jxx-1) - _H_q_upx.row(jxx-1);  
-		_F_zmp_lowx.row(jxx-1) = _pauSjz2.row(jxx-1) * _V_ini + _del_i_x_low.col(jxx-1) -  _del_i_x_up.col(jxx-1)-_F_zmp_upx.row(jxx-1); 
+		_F_zmp_lowx.row(jxx-1) = _pauSjz2.row(jxx-1) * _V_ini + _det_del_i_x.col(jxx-1)-_F_zmp_upx.row(jxx-1); 
 		
 		
 		// y-ZMP upper boundary	      
@@ -1097,7 +1105,7 @@ void MPCClass::CoM_foot_trajection_generation_local(int i, Eigen::Matrix<double,
 		
 		// y-ZMP low boundary	      	      
 		_H_q_lowy.row(jxx-1) = - _pauSjz21.row(jxx-1) - _H_q_upy.row(jxx-1); 
-		_F_zmp_lowy.row(jxx-1) = _pauSjz21.row(jxx-1) * _V_ini + _del_i_y_low.col(jxx-1) - _del_i_y_up.col(jxx-1)-_F_zmp_upy.row(jxx-1);      	      
+		_F_zmp_lowy.row(jxx-1) = _pauSjz21.row(jxx-1) * _V_ini + _det_del_i_y.col(jxx-1)-_F_zmp_upy.row(jxx-1);      	      
 	    
 
 		
