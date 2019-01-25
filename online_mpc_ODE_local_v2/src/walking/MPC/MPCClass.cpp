@@ -2422,7 +2422,7 @@ Vector3d MPCClass::XGetSolution_CoM_position(int walktime, double dt_sample, Eig
 	if (walktime>=2)
 	{
 	  int t_int; 
-	  t_int = floor(walktime / (_dt / dt_sample) );
+	  t_int = floor(walktime*dt_sample / _dt );
 
 	  ///// chage to be relative time
 	  double t_cur;
@@ -2541,7 +2541,7 @@ Vector3d MPCClass::XGetSolution_body_inclination(int walktime, double dt_sample,
 	if (walktime>=2)
 	{
 	  int t_int; 
-	  t_int = floor(walktime / (_dt / dt_sample) );
+	  t_int = floor(walktime*dt_sample / _dt );
 
 	  
 	  double t_cur;
@@ -2662,7 +2662,7 @@ Vector3d MPCClass::XGetSolution_Foot_positionR(int walktime, double dt_sample, E
 	if (walktime>=2)
 	{
 	  int t_int; 
-	  t_int = floor(walktime / (_dt / dt_sample) );
+	  t_int = floor(walktime*dt_sample / _dt );
 
 	  
 	  double t_cur;
@@ -2801,8 +2801,8 @@ Vector3d MPCClass::XGetSolution_Foot_positionL(int walktime, double dt_sample, E
 	if (walktime>=2)
 	{
 	  int t_int; 
-	  t_int = floor(walktime / (_dt / dt_sample) );
-
+//	  t_int = floor(walktime / (_dt / dt_sample) );
+	  t_int = floor(walktime*dt_sample / _dt );
 	  
 	  double t_cur;
 	  t_cur = walktime * dt_sample;
