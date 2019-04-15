@@ -28,7 +28,7 @@ using namespace std;
 /// constant variable defintion
 const int _footstepsnumber = 25;       //  number of _footstepnumber
 const double _dt = 0.1;                //sampling time
-const int _nh = 9;                    /// =PreviewT/_dt: number of sampling time for predictive window: <= 2*_nT; (_dt defined in MpcRTControlClass.h: dt_mpc)  	
+const int _nh = 11;                    /// =PreviewT/_dt: number of sampling time for predictive window: <= 2*_nT; (_dt defined in MpcRTControlClass.h: dt_mpc)  	
 const double _tstep = 0.6;              ///step period
 const int _nT = round(_tstep/_dt);      /// _tstep/_dt)  the number of one step cycle
 const int _nstep = 2;                   /// maximal footstep locations where the predictive windwo covers
